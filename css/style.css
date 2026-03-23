@@ -1,0 +1,927 @@
+/* ============================================================
+   DESIGN SYSTEM — "Does Cracking Down Actually Work?"
+   Australian Road Safety Enforcement Data Visualisation
+   ============================================================
+   Table of Contents:
+   1. Design Tokens (Custom Properties)
+   2. CSS Reset & Base Styles
+   3. Typography
+   4. Accessibility Utilities
+   5. Layout & Containers
+   6. Navigation (Sticky)
+   7. Hero Section
+   8. Section Styles
+   9. Chart Containers
+  10. Controls (Pills, Sliders, Legends)
+  11. Stat Cards
+  12. Conclusion Section
+  13. Footer
+  14. Responsive Breakpoints
+  15. Reduced Motion
+   ============================================================ */
+
+
+/* ──────────────────────────────────────────────────────────────
+   1. DESIGN TOKENS
+   ────────────────────────────────────────────────────────────── */
+:root {
+  /* ── Surface colours ── */
+  --colour-background: #F8F6F1;
+  --colour-surface: #FFFFFF;
+  --colour-text-primary: #1A1A1A;
+  --colour-text-secondary: #555555;
+  --colour-text-muted: #888888;
+  --colour-accent: #1B4F72;
+  --colour-accent-light: #D6EAF8;
+  --colour-border: #E0DDD6;
+
+  /* ── Sequential colour ramp (single-hue, colourblind-safe) ── */
+  --colour-seq-1: #EBF5FB;
+  --colour-seq-2: #AED6F1;
+  --colour-seq-3: #5DADE2;
+  --colour-seq-4: #2E86C1;
+  --colour-seq-5: #1B4F72;
+
+  /* ── Qualitative colours (Okabe-Ito, colourblind-safe) ── */
+  --colour-speeding:   #0072B2;
+  --colour-mobile:     #E69F00;
+  --colour-seatbelt:   #009E73;
+  --colour-unlicensed: #CC79A7;
+
+  /* ── Typography ── */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-base: 16px;
+  --line-height-base: 1.6;
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+
+  /* ── Heading scale ── */
+  --font-size-hero: 48px;
+  --font-size-h1: 32px;
+  --font-size-h2: 22px;
+  --font-size-h3: 16px;
+
+  /* ── Spacing ── */
+  --content-max-width: 1100px;
+  --content-padding: 0 24px;
+  --section-gap: 80px;
+  --nav-height: 64px;
+
+  /* ── Transitions ── */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   2. CSS RESET & BASE STYLES
+   ────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: var(--font-size-base);
+  scroll-behavior: smooth;
+  scroll-padding-top: var(--nav-height);
+}
+
+body {
+  font-family: var(--font-family);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-base);
+  color: var(--colour-text-primary);
+  background-color: var(--colour-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--colour-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   3. TYPOGRAPHY
+   ────────────────────────────────────────────────────────────── */
+h1, h2, h3, h4 {
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  color: var(--colour-text-primary);
+}
+
+h1 { font-size: var(--font-size-h1); }
+h2 { font-size: var(--font-size-h2); }
+h3 { font-size: var(--font-size-h3); }
+
+.hero-title {
+  font-size: var(--font-size-hero);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.section-subtitle {
+  font-size: 1.125rem;
+  color: var(--colour-text-secondary);
+  font-weight: var(--font-weight-light);
+  max-width: 680px;
+}
+
+p {
+  margin-bottom: 1rem;
+  color: var(--colour-text-secondary);
+}
+
+.text-muted {
+  color: var(--colour-text-muted);
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   4. ACCESSIBILITY UTILITIES
+   ────────────────────────────────────────────────────────────── */
+
+/* Screen-reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip-to-content link */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 10000;
+  padding: 12px 24px;
+  background: var(--colour-accent);
+  color: var(--colour-surface);
+  font-weight: var(--font-weight-semibold);
+  border-radius: 0 0 8px 8px;
+  font-size: 0.875rem;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid var(--colour-accent-light);
+  outline-offset: 2px;
+  text-decoration: none;
+}
+
+/* Focus-visible outline for keyboard users */
+*:focus-visible {
+  outline: 3px solid var(--colour-accent);
+  outline-offset: 2px;
+}
+
+/* Remove outline for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   5. LAYOUT & CONTAINERS
+   ────────────────────────────────────────────────────────────── */
+.container {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--content-padding);
+}
+
+section {
+  padding: var(--section-gap) 0;
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   6. NAVIGATION (Sticky)
+   ────────────────────────────────────────────────────────────── */
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: var(--colour-surface);
+  border-bottom: 1px solid var(--colour-border);
+  height: var(--nav-height);
+}
+
+.nav-inner {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.nav-logo {
+  font-size: 1.125rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--colour-text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-logo:hover {
+  text-decoration: none;
+  color: var(--colour-accent);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-regular);
+  color: var(--colour-text-secondary);
+  text-decoration: none;
+  border-radius: 6px;
+  min-height: 44px;
+  position: relative;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background-color: var(--colour-accent);
+  transform: scaleX(0);
+  transform-origin: center;
+}
+
+.nav-link:hover {
+  color: var(--colour-text-primary);
+  background-color: var(--colour-accent-light);
+  text-decoration: none;
+}
+
+.nav-link.active {
+  color: var(--colour-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.nav-link.active::after {
+  transform: scaleX(1);
+}
+
+/* ── Hamburger menu button (mobile) ── */
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-toggle-icon {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--colour-text-primary);
+  position: relative;
+}
+
+.nav-toggle-icon::before,
+.nav-toggle-icon::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 2px;
+  background: var(--colour-text-primary);
+  left: 0;
+}
+
+.nav-toggle-icon::before { top: -7px; }
+.nav-toggle-icon::after  { top: 7px; }
+
+
+/* ──────────────────────────────────────────────────────────────
+   7. HERO SECTION
+   ────────────────────────────────────────────────────────────── */
+.hero {
+  padding: 100px 0 80px;
+  text-align: center;
+  background-color: var(--colour-background);
+}
+
+.hero-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border: 1px solid var(--colour-border);
+  border-radius: 100px;
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+  margin-bottom: 24px;
+  letter-spacing: 0.02em;
+}
+
+.hero .hero-title {
+  margin-bottom: 16px;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: var(--colour-text-secondary);
+  font-weight: var(--font-weight-light);
+  margin-bottom: 32px;
+}
+
+.hero-intro {
+  max-width: 720px;
+  margin: 0 auto 48px;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--colour-text-secondary);
+}
+
+/* ── Stat cards row ── */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 800px;
+  margin: 0 auto 48px;
+}
+
+.stat-card {
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.stat-card__value {
+  font-size: 2rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--colour-accent);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.stat-card__label {
+  font-size: 0.875rem;
+  color: var(--colour-text-muted);
+  line-height: 1.4;
+}
+
+/* ── Scroll-down arrow ── */
+.scroll-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--colour-text-muted);
+  font-size: 1.5rem;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.scroll-arrow svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   8. SECTION STYLES
+   ────────────────────────────────────────────────────────────── */
+.section-header {
+  margin-bottom: 32px;
+}
+
+.section-header h2 {
+  margin-bottom: 8px;
+}
+
+.section-header p {
+  max-width: 680px;
+}
+
+.section--alt {
+  background-color: var(--colour-surface);
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   9. CHART CONTAINERS
+   ────────────────────────────────────────────────────────────── */
+.chart-container {
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: 12px;
+  padding: 32px 24px;
+  min-height: 300px;
+  position: relative;
+}
+
+.chart-container svg {
+  width: 100%;
+  height: auto;
+}
+
+.chart-note {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+  margin-top: 16px;
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   10. CONTROLS: PILLS, SLIDERS, LEGENDS
+   ────────────────────────────────────────────────────────────── */
+
+/* ── Filter pills ── */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.controls__label {
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--colour-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 4px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border: 1px solid var(--colour-border);
+  border-radius: 100px;
+  font-size: 0.8125rem;
+  color: var(--colour-text-secondary);
+  background: var(--colour-surface);
+  cursor: pointer;
+  min-height: 36px;
+  font-family: var(--font-family);
+}
+
+.pill:hover {
+  border-color: var(--colour-accent);
+  color: var(--colour-accent);
+}
+
+.pill.active,
+.pill[aria-pressed="true"] {
+  background: var(--colour-accent);
+  border-color: var(--colour-accent);
+  color: var(--colour-surface);
+}
+
+/* ── Year slider ── */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.slider-row__label {
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--colour-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.slider-row input[type="range"] {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--colour-border);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--colour-surface);
+  border: 2px solid var(--colour-accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider-row input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--colour-surface);
+  border: 2px solid var(--colour-accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider-row__value {
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--colour-accent);
+  min-width: 40px;
+  text-align: center;
+}
+
+/* ── Chart legend ── */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--colour-text-secondary);
+  cursor: default;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-line {
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-line--dashed {
+  background: repeating-linear-gradient(
+    90deg,
+    currentColor 0,
+    currentColor 5px,
+    transparent 5px,
+    transparent 8px
+  );
+  height: 2px;
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   11. STAT CARDS (reusable)
+   ────────────────────────────────────────────────────────────── */
+.takeaway-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 32px;
+}
+
+.takeaway-card {
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: 12px;
+  padding: 24px 20px;
+}
+
+.takeaway-card__icon {
+  width: 40px;
+  height: 40px;
+  background: var(--colour-accent-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  font-size: 1.25rem;
+}
+
+.takeaway-card__title {
+  font-size: 1rem;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 8px;
+  color: var(--colour-text-primary);
+}
+
+.takeaway-card__text {
+  font-size: 0.875rem;
+  color: var(--colour-text-secondary);
+  line-height: 1.6;
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   12. CONCLUSION SECTION
+   ────────────────────────────────────────────────────────────── */
+.data-source {
+  margin-top: 40px;
+  padding: 20px 24px;
+  background: var(--colour-background);
+  border: 1px solid var(--colour-border);
+  border-radius: 8px;
+}
+
+.data-source__heading {
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--colour-text-muted);
+  margin-bottom: 8px;
+}
+
+.data-source p {
+  font-size: 0.875rem;
+  color: var(--colour-text-secondary);
+  margin-bottom: 4px;
+}
+
+.data-source a {
+  color: var(--colour-accent);
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   13. FOOTER
+   ────────────────────────────────────────────────────────────── */
+.site-footer {
+  background: var(--colour-surface);
+  border-top: 1px solid var(--colour-border);
+  padding: 24px 0;
+}
+
+.footer-inner {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-credit {
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+}
+
+.footer-links {
+  display: flex;
+  gap: 20px;
+}
+
+.footer-links a {
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer-links a:hover {
+  color: var(--colour-accent);
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   14. RESPONSIVE BREAKPOINTS
+   ────────────────────────────────────────────────────────────── */
+
+/* ── Tablet: 768px – 1024px ── */
+@media (max-width: 1024px) {
+  .stat-cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .takeaway-cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .chart-container {
+    padding: 24px 16px;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+  }
+}
+
+/* ── Mobile: < 768px ── */
+@media (max-width: 767px) {
+  :root {
+    --nav-height: 56px;
+    --section-gap: 48px;
+  }
+
+  /* Nav collapses to hamburger */
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: var(--colour-surface);
+    border-bottom: 1px solid var(--colour-border);
+    padding: 8px 24px 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    z-index: 999;
+  }
+
+  .nav-links.open {
+    display: flex;
+  }
+
+  .nav-link {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 12px 0;
+    border-radius: 0;
+    border-bottom: 1px solid var(--colour-border);
+  }
+
+  .nav-link:last-child {
+    border-bottom: none;
+  }
+
+  .nav-link::after {
+    display: none;
+  }
+
+  /* Hero adjustments */
+  .hero {
+    padding: 64px 0 48px;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.0625rem;
+  }
+
+  .stat-cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  /* Takeaway cards single column */
+  .takeaway-cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Section headings */
+  h1 { font-size: 1.625rem; }
+  h2 { font-size: 1.25rem; }
+
+  /* Chart containers full-width */
+  .chart-container {
+    padding: 16px 12px;
+    border-radius: 8px;
+  }
+
+  /* Controls wrap */
+  .controls {
+    gap: 6px;
+  }
+
+  .pill {
+    font-size: 0.75rem;
+    padding: 5px 12px;
+  }
+
+  /* Footer stacked */
+  .footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .footer-links {
+    justify-content: center;
+  }
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   15. REDUCED MOTION
+   ────────────────────────────────────────────────────────────── */
+
+/* Animations only play when user has no motion preference */
+@media (prefers-reduced-motion: no-preference) {
+  .nav-link::after {
+    transition: transform var(--transition-base);
+  }
+
+  .pill {
+    transition: background-color var(--transition-fast),
+                border-color var(--transition-fast),
+                color var(--transition-fast);
+  }
+
+  .nav-link {
+    transition: color var(--transition-fast),
+                background-color var(--transition-fast);
+  }
+
+  .scroll-arrow {
+    animation: bounce 2s infinite;
+  }
+
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+      transform: translateY(0);
+    }
+    40% {
+      transform: translateY(-8px);
+    }
+    60% {
+      transform: translateY(-4px);
+    }
+  }
+
+  .stat-card {
+    transition: transform var(--transition-fast),
+                box-shadow var(--transition-fast);
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .footer-links a {
+    transition: color var(--transition-fast);
+  }
+
+  .nav-logo {
+    transition: color var(--transition-fast);
+  }
+}

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Does Cracking Down Actually Work? — Australian Road Safety Enforcement</title>
+  <meta name="description" content="Exploring 15 years of Australian road safety enforcement data through interactive D3.js visualisations. Breath tests, drug tests, fines, and state-by-state comparisons." />
+
+  <!-- Google Fonts: Inter (300, 400, 600) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet" />
+
+  <!-- Design System -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ── Skip-to-content link (first focusable element) ── -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+
+  <!-- ════════════════════════════════════════════════════════
+       NAVIGATION — Sticky top bar
+       ════════════════════════════════════════════════════════ -->
+  <header class="site-nav" role="banner">
+    <nav class="nav-inner" aria-label="Primary navigation">
+      <a href="#hero" class="nav-logo">Road Safety Viz</a>
+
+      <!-- Hamburger toggle (visible on mobile only) -->
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Toggle navigation menu">
+        <span class="nav-toggle-icon"></span>
+      </button>
+
+      <ul id="nav-links" class="nav-links" role="list">
+        <li><a href="#hero" class="nav-link active">Overview</a></li>
+        <li><a href="#trends" class="nav-link">Trends</a></li>
+        <li><a href="#comparison" class="nav-link">State Comparison</a></li>
+        <li><a href="#fines" class="nav-link">Fines</a></li>
+        <li><a href="#conclusion" class="nav-link">About</a></li>
+      </ul>
+    </nav>
+  </header>
+
+
+  <!-- ════════════════════════════════════════════════════════
+       MAIN CONTENT
+       ════════════════════════════════════════════════════════ -->
+  <main id="main-content">
+
+    <!-- ══ SECTION 1: HERO ══════════════════════════════════ -->
+    <section id="hero" class="hero">
+      <div class="container">
+        <span class="hero-badge">Australian Road Safety Enforcement · 2008–2023</span>
+
+        <h1 class="hero-title">Does Cracking Down<br>Actually Work?</h1>
+
+        <p class="hero-subtitle">Exploring 15 years of Australian road safety enforcement data</p>
+
+        <p class="hero-intro">
+          Every year, millions of Australians are breath-tested, drug-tested, and fined for traffic offences.
+          But does this ever-increasing enforcement actually make our roads safer?
+          Dive into the data to find out.
+        </p>
+
+        <!-- Stat cards — values populated by JS -->
+        <div class="stat-cards">
+          <div class="stat-card">
+            <div class="stat-card__value" id="stat-breath">XX million</div>
+            <div class="stat-card__label">Breath tests conducted (2008–2023)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__value" id="stat-drug">XX,XXX</div>
+            <div class="stat-card__label">Drug tests conducted</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__value" id="stat-fines">XX million</div>
+            <div class="stat-card__label">Fines issued (all categories)</div>
+          </div>
+        </div>
+
+        <!-- Scroll-down arrow -->
+        <a href="#map" class="scroll-arrow" aria-label="Scroll down to explore">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </a>
+      </div>
+    </section>
+
+
+    <!-- ══ SECTION 2: CHOROPLETH MAP ════════════════════════ -->
+    <section id="map" class="section--alt">
+      <div class="container">
+        <div class="section-header">
+          <h2>State-by-State Enforcement</h2>
+          <p class="section-subtitle">
+            See how alcohol and drug testing intensity varies across Australian states and territories.
+            Drag the year slider to watch enforcement patterns change over time.
+          </p>
+        </div>
+
+        <!-- Metric toggle pills -->
+        <div class="controls" aria-label="Map metric selector">
+          <span class="controls__label">Metric:</span>
+          <button class="pill active" role="button" aria-pressed="true">Positivity rate %</button>
+          <button class="pill" role="button" aria-pressed="false">Tests per capita</button>
+          <button class="pill" role="button" aria-pressed="false">Total tests</button>
+        </div>
+
+        <!-- Type toggle pills -->
+        <div class="controls" aria-label="Test type selector">
+          <span class="controls__label">Type:</span>
+          <button class="pill active" role="button" aria-pressed="true">Alcohol</button>
+          <button class="pill" role="button" aria-pressed="false">Drug</button>
+        </div>
+
+        <!-- Year slider -->
+        <div class="slider-row">
+          <label class="slider-row__label" for="year-slider">Year</label>
+          <input type="range" id="year-slider" min="2008" max="2023" value="2016" step="1" aria-valuemin="2008" aria-valuemax="2023" aria-valuenow="2016" />
+          <span class="slider-row__value" id="year-display">2016</span>
+        </div>
+
+        <!-- Chart container — D3 will render the choropleth here -->
+        <div class="chart-container" role="img" aria-label="Choropleth map of Australian road safety enforcement by state and year">
+          <p class="chart-note">Interactive choropleth map — loading with D3.js…</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ SECTION 3: TRENDS (Dual-Axis Line Chart) ═════════ -->
+    <section id="trends">
+      <div class="container">
+        <div class="section-header">
+          <h2>Enforcement Trends Over Time</h2>
+          <p class="section-subtitle">
+            Track the relationship between the number of tests conducted and the positivity rate.
+            Select a state to explore how enforcement and outcomes have changed across 15 years.
+          </p>
+        </div>
+
+        <!-- State selector pills -->
+        <div class="controls" aria-label="State selector">
+          <span class="controls__label">State:</span>
+          <button class="pill active" role="button" aria-pressed="true">NSW</button>
+          <button class="pill" role="button" aria-pressed="false">VIC</button>
+          <button class="pill" role="button" aria-pressed="false">QLD</button>
+          <button class="pill" role="button" aria-pressed="false">SA</button>
+          <button class="pill" role="button" aria-pressed="false">WA</button>
+          <button class="pill" role="button" aria-pressed="false">NT</button>
+          <button class="pill" role="button" aria-pressed="false">All</button>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend" aria-label="Chart legend">
+          <span class="legend-item">
+            <span class="legend-line" style="background: var(--colour-accent);"></span>
+            Tests conducted (left axis)
+          </span>
+          <span class="legend-item">
+            <span class="legend-line legend-line--dashed" style="color: var(--colour-mobile);"></span>
+            Positivity rate % (right axis)
+          </span>
+        </div>
+
+        <!-- Chart container — D3 will render the dual-axis line chart here -->
+        <div class="chart-container" role="img" aria-label="Dual-axis line chart showing tests conducted versus positivity rate over time">
+          <p class="chart-note">Interactive line chart — loading with D3.js…</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ SECTION 4: STATE COMPARISON (Slope Chart) ════════ -->
+    <section id="comparison" class="section--alt">
+      <div class="container">
+        <div class="section-header">
+          <h2>State Comparison: Then vs Now</h2>
+          <p class="section-subtitle">
+            Compare positivity rates between two chosen years.
+            Rising lines mean worsening outcomes; falling lines mean enforcement improved results.
+          </p>
+        </div>
+
+        <!-- Year A selector -->
+        <div class="controls" aria-label="Comparison start year">
+          <span class="controls__label">Compare Year A:</span>
+          <button class="pill active" role="button" aria-pressed="true">2010</button>
+          <button class="pill" role="button" aria-pressed="false">2012</button>
+          <button class="pill" role="button" aria-pressed="false">2014</button>
+        </div>
+
+        <!-- Year B selector -->
+        <div class="controls" aria-label="Comparison end year">
+          <span class="controls__label">To Year B:</span>
+          <button class="pill" role="button" aria-pressed="false">2018</button>
+          <button class="pill" role="button" aria-pressed="false">2020</button>
+          <button class="pill active" role="button" aria-pressed="true">2022</button>
+        </div>
+
+        <!-- Chart container — D3 will render the slope chart here -->
+        <div class="chart-container" role="img" aria-label="Slope chart comparing state positivity rates between two selected years">
+          <p class="chart-note">Interactive slope chart — loading with D3.js…</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ SECTION 5: FINES (Streamgraph) ═══════════════════ -->
+    <section id="fines">
+      <div class="container">
+        <div class="section-header">
+          <h2>Fine Composition Over Time</h2>
+          <p class="section-subtitle">
+            Explore how different categories of traffic fines — speeding, mobile phone use, seatbelt,
+            and unlicensed driving — have evolved from 2008 to 2023.
+          </p>
+        </div>
+
+        <!-- Category legend -->
+        <div class="legend" aria-label="Fine category legend">
+          <span class="legend-item">
+            <span class="legend-dot" style="background: var(--colour-speeding);"></span>
+            Speeding
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot" style="background: var(--colour-mobile);"></span>
+            Mobile phone use
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot" style="background: var(--colour-seatbelt);"></span>
+            Seatbelt
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot" style="background: var(--colour-unlicensed);"></span>
+            Unlicensed driving
+          </span>
+        </div>
+
+        <!-- Chart container — D3 will render the streamgraph here -->
+        <div class="chart-container" role="img" aria-label="Streamgraph showing the composition of traffic fines by category over time">
+          <p class="chart-note">Interactive streamgraph — loading with D3.js…</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ SECTION 6: CONCLUSION ════════════════════════════ -->
+    <section id="conclusion" class="section--alt">
+      <div class="container">
+        <div class="section-header">
+          <h2>Key Takeaways</h2>
+          <p class="section-subtitle">
+            What does 15 years of enforcement data tell us about whether cracking down on road offences
+            actually works? Here are the three headline findings.
+          </p>
+        </div>
+
+        <!-- Takeaway cards -->
+        <div class="takeaway-cards">
+          <div class="takeaway-card">
+            <div class="takeaway-card__icon" aria-hidden="true">📊</div>
+            <h3 class="takeaway-card__title">More Testing, Lower Positivity</h3>
+            <p class="takeaway-card__text">
+              States that increased their breath-testing volumes saw a measurable decline in
+              positive test rates over the long term.
+            </p>
+          </div>
+          <div class="takeaway-card">
+            <div class="takeaway-card__icon" aria-hidden="true">📱</div>
+            <h3 class="takeaway-card__title">Mobile Fines Surged</h3>
+            <p class="takeaway-card__text">
+              Mobile phone fines grew faster than any other category after 2012, reflecting
+              new legislation and camera-based enforcement technology.
+            </p>
+          </div>
+          <div class="takeaway-card">
+            <div class="takeaway-card__icon" aria-hidden="true">🗺️</div>
+            <h3 class="takeaway-card__title">States Vary Widely</h3>
+            <p class="takeaway-card__text">
+              Enforcement intensity and outcomes differ significantly between states,
+              suggesting policy differences play a major role beyond just volume.
+            </p>
+          </div>
+        </div>
+
+        <!-- Data source box -->
+        <div class="data-source">
+          <div class="data-source__heading">Data Sources & References</div>
+          <p>
+            Bureau of Infrastructure and Transport Research Economics (BITRE),
+            <em>Australian Road Safety — Enforcement Data 2008–2023</em>.
+          </p>
+          <p>
+            <a href="https://www.bitre.gov.au/" target="_blank" rel="noopener noreferrer">
+              www.bitre.gov.au
+            </a>
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- ════════════════════════════════════════════════════════
+       TOOLTIP ANNOUNCEMENT (screen-reader live region)
+       ════════════════════════════════════════════════════════ -->
+  <div id="tooltip-announce" aria-live="polite" class="sr-only"></div>
+
+
+  <!-- ════════════════════════════════════════════════════════
+       FOOTER
+       ════════════════════════════════════════════════════════ -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <span class="footer-credit">Data: BITRE 2024 · Built with D3.js</span>
+      <nav class="footer-links" aria-label="Footer links">
+        <a href="#conclusion">About</a>
+        <a href="https://github.com/" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://www.bitre.gov.au/" target="_blank" rel="noopener noreferrer">Data source</a>
+      </nav>
+    </div>
+  </footer>
+
+
+  <!-- ════════════════════════════════════════════════════════
+       SCRIPTS
+       ════════════════════════════════════════════════════════ -->
+  <!-- D3.js v7 from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+
+  <!-- Mobile nav toggle (inline, minimal) -->
+  <script>
+    // Hamburger menu toggle for mobile navigation
+    (function () {
+      const toggle = document.querySelector('.nav-toggle');
+      const links = document.getElementById('nav-links');
+      if (toggle && links) {
+        toggle.addEventListener('click', function () {
+          const expanded = toggle.getAttribute('aria-expanded') === 'true';
+          toggle.setAttribute('aria-expanded', String(!expanded));
+          links.classList.toggle('open');
+        });
+      }
+
+      // IntersectionObserver: highlight active nav link on scroll
+      const sections = document.querySelectorAll('main section[id]');
+      const navLinks = document.querySelectorAll('.nav-link');
+
+      if ('IntersectionObserver' in window && sections.length) {
+        const observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                const id = entry.target.getAttribute('id');
+                navLinks.forEach(function (link) {
+                  link.classList.toggle(
+                    'active',
+                    link.getAttribute('href') === '#' + id
+                  );
+                });
+              }
+            });
+          },
+          { rootMargin: '-40% 0px -60% 0px' }
+        );
+        sections.forEach(function (section) {
+          observer.observe(section);
+        });
+      }
+    })();
+  </script>
+
+</body>
+</html>
