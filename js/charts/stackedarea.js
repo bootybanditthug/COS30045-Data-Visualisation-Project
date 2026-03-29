@@ -112,7 +112,7 @@ export function initStackedArea(selector, finesData) {
   _finesRaw = finesData;
   _container = d3.select(selector);
   _container.html("");
-  _mode = "absolute";
+  _mode = "share";
   _hiddenCats = new Set();
   _lockedCat = null;
 
@@ -127,7 +127,7 @@ export function initStackedArea(selector, finesData) {
   const toggle = _container.append("div").attr("class", "dualaxis-toggle");
   toggle
     .append("button")
-    .attr("class", "toggle-btn active")
+    .attr("class", "toggle-btn")
     .attr("data-mode", "absolute")
     .text("Absolute")
     .on("click", function () {
@@ -135,7 +135,7 @@ export function initStackedArea(selector, finesData) {
     });
   toggle
     .append("button")
-    .attr("class", "toggle-btn")
+    .attr("class", "toggle-btn active")
     .attr("data-mode", "share")
     .text("Share of total (%)")
     .on("click", function () {
@@ -454,7 +454,7 @@ export function renderSmallMultiples(sel, finesData) {
   const smH = 110,
     smW = 220;
 
-  // Compute global y max for consistent small multiples
+  // Build data per jurisdiction; each chart is scaled to its own max.
   const allSmData = [];
   for (const j of jurisdictions) {
     const jData = finesData.filter((d) => d.JURISDICTION === j);
@@ -467,11 +467,13 @@ export function renderSmallMultiples(sel, finesData) {
     });
     allSmData.push({ j, sd });
   }
-  const globalYMax =
-    d3.max(allSmData, ({ sd }) => {
-      const s = d3.stack().keys(cats).order(d3.stackOrderDescending)(sd);
-      return d3.max(s, (ser) => d3.max(ser, (d) => d[1]));
-    }) || 1;
+
+  smC
+    .append("div")
+    .attr("class", "small-multiples-note")
+    .text(
+      "Small multiples use independent y-scales so lower-volume jurisdictions remain readable.",
+    );
 
   for (const { j, sd } of allSmData) {
     const card = smC
@@ -520,9 +522,10 @@ export function renderSmallMultiples(sel, finesData) {
       .domain(d3.extent(gp))
       .range([4, smW - 4]);
     const series = d3.stack().keys(cats).order(d3.stackOrderDescending)(sd);
+    const localYMax = d3.max(series, (ser) => d3.max(ser, (d) => d[1])) || 1;
     const y = d3
       .scaleLinear()
-      .domain([0, globalYMax])
+      .domain([0, localYMax])
       .range([smH - 4, 4]);
 
     const area = d3

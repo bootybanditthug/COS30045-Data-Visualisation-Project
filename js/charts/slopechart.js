@@ -4,13 +4,15 @@
  */
 import { tooltip } from "../tooltip.js";
 
-let _svg, _g, _container, _alcoholDrug, _breathTests, _allYears;
+let _svg, _g, _container, _alcoholDrug, _breathTests, _drugTests, _allYears;
 let _width, _height;
 const _margin = { top: 50, right: 150, bottom: 30, left: 150 };
 let _yearA, _yearB, _selectA, _selectB;
 let _activeStates = [];
 let _lastFilterState = null;
+let _metric = "alcohol";
 const TRANSITION_MS = 400;
+const STABLE_CHANGE_PP = 0.3;
 
 function sameArray(a = [], b = []) {
   if (a.length !== b.length) return false;
@@ -27,17 +29,32 @@ function getPositiveTests(breathTests, j, yr) {
   return rows.length ? d3.sum(rows, (d) => d.positive_breath_tests || 0) : null;
 }
 
-function calcRate(ad, bt, j, yr) {
+function getPositiveDrugTests(drugTests, j, yr) {
+  const rows = drugTests.filter(
+    (d) =>
+      d.JURISDICTION === j &&
+      d.YEAR === yr &&
+      d.AGE_GROUP === "all ages" &&
+      d.METRIC === "positive_drug_tests",
+  );
+  return rows.length ? d3.sum(rows, (d) => d.COUNT || 0) : null;
+}
+
+function calcRate(ad, bt, dt, j, yr, metric) {
   const t = ad.find((d) => d.JURISDICTION === j && d.YEAR === yr);
+  if (!t) return null;
+
+  if (metric === "drug") {
+    const p = getPositiveDrugTests(dt, j, yr);
+    const tests = t.drug_test_conducted || 0;
+    if (p == null || tests <= 0) return null;
+    return (p / tests) * 100;
+  }
+
   const p = getPositiveTests(bt, j, yr);
-  if (
-    !t ||
-    p == null ||
-    !t.breath_test_conducted ||
-    t.breath_test_conducted <= 0
-  )
-    return null;
-  return (p / t.breath_test_conducted) * 100;
+  const tests = t.breath_test_conducted || 0;
+  if (p == null || tests <= 0) return null;
+  return (p / tests) * 100;
 }
 
 // Push labels apart so they don't overlap
@@ -58,9 +75,17 @@ function resolveCollisions(labels, minGap) {
   }
 }
 
-export function initSlopeChart(selector, alcoholDrug, breathTests) {
+export function initSlopeChart(
+  selector,
+  alcoholDrug,
+  breathTests,
+  drugTests,
+  metric = "alcohol",
+) {
   _alcoholDrug = alcoholDrug;
   _breathTests = breathTests;
+  _drugTests = drugTests;
+  _metric = metric;
   _container = d3.select(selector);
   _container.html("");
 
@@ -113,6 +138,26 @@ export function initSlopeChart(selector, alcoholDrug, breathTests) {
     render(true);
   });
 
+  const legend = _container.append("div").attr("class", "slope-legend");
+  legend
+    .append("span")
+    .attr("class", "slope-legend-item")
+    .html(
+      '<span class="slope-legend-swatch" style="background:#2E8B57"></span>Improving (rate down)',
+    );
+  legend
+    .append("span")
+    .attr("class", "slope-legend-item")
+    .html(
+      '<span class="slope-legend-swatch" style="background:#E09420"></span>Deteriorating (rate up)',
+    );
+  legend
+    .append("span")
+    .attr("class", "slope-legend-item")
+    .html(
+      '<span class="slope-legend-swatch" style="background:#B0AEAB"></span>Stable',
+    );
+
   const cw = _container.node().clientWidth || 520;
   _width = cw - _margin.left - _margin.right;
   _height = 360;
@@ -151,8 +196,22 @@ function render(animate) {
 
   const items = [];
   for (const j of jurisdictions) {
-    const rA = calcRate(_alcoholDrug, _breathTests, j, _yearA);
-    const rB = calcRate(_alcoholDrug, _breathTests, j, _yearB);
+    const rA = calcRate(
+      _alcoholDrug,
+      _breathTests,
+      _drugTests,
+      j,
+      _yearA,
+      _metric,
+    );
+    const rB = calcRate(
+      _alcoholDrug,
+      _breathTests,
+      _drugTests,
+      j,
+      _yearB,
+      _metric,
+    );
     if (rA == null || rB == null) continue;
     items.push({ j, rA, rB, change: rB - rA });
   }
@@ -275,12 +334,14 @@ function render(animate) {
     const ch = d.change;
 
     let color;
-    if (Math.abs(ch) < 0.1) color = "#B0AEAB";
+    if (Math.abs(ch) < STABLE_CHANGE_PP) color = "#B0AEAB";
     else if (ch < 0) color = "#2E8B57";
-    else color = "#C93B3B";
+    else color = "#E09420";
 
-    const isImp = d.j === topImp.j && Math.abs(topImp.change) >= 0.1;
-    const isWor = d.j === topWor.j && Math.abs(topWor.change) >= 0.1;
+    const isImp =
+      d.j === topImp.j && Math.abs(topImp.change) >= STABLE_CHANGE_PP;
+    const isWor =
+      d.j === topWor.j && Math.abs(topWor.change) >= STABLE_CHANGE_PP;
     const emphasis = isImp || isWor;
     const lw = emphasis ? 2.5 : 1.8;
     const opacity = emphasis ? 0.95 : 0.55;
@@ -295,7 +356,7 @@ function render(animate) {
       .attr("stroke", color)
       .attr("stroke-width", lw)
       .attr("opacity", opacity);
-    if (Math.abs(ch) < 0.1) line.attr("stroke-dasharray", "5,4");
+    if (Math.abs(ch) < STABLE_CHANGE_PP) line.attr("stroke-dasharray", "5,4");
     if (animate)
       line
         .transition()
@@ -356,7 +417,7 @@ function render(animate) {
     // Labels with collision-resolved Y
     const lL = labelsL.find((l) => l.j === d.j);
     const lR = labelsR.find((l) => l.j === d.j);
-    const labelColor = isImp ? "#2E8B57" : isWor ? "#C93B3B" : "#5C5C5C";
+    const labelColor = color;
     const fw = emphasis ? 700 : 500;
     const fs = "12px";
 
@@ -403,29 +464,42 @@ function render(animate) {
   }
 }
 
-export function updateSlopeChart(alcoholDrug, breathTests, yearRange, states) {
+export function updateSlopeChart(
+  alcoholDrug,
+  breathTests,
+  drugTests,
+  yearRange,
+  states,
+  metric = "alcohol",
+) {
   const nextStates = states && states.length > 0 ? [...states].sort() : [];
   const nextRange = yearRange
     ? [...yearRange]
     : [_allYears[0], _allYears[_allYears.length - 1]];
-  const nextState = { states: nextStates, yearRange: nextRange };
+  const nextState = { states: nextStates, yearRange: nextRange, metric };
   if (
     _lastFilterState &&
     sameArray(_lastFilterState.states, nextState.states) &&
-    sameArray(_lastFilterState.yearRange, nextState.yearRange)
+    sameArray(_lastFilterState.yearRange, nextState.yearRange) &&
+    _lastFilterState.metric === nextState.metric
   ) {
     return;
   }
   _lastFilterState = nextState;
 
   if (!_selectA || !_selectB) return;
+  _metric = metric;
+  _drugTests = drugTests;
   _activeStates = states && states.length > 0 ? states : [];
   if (yearRange) {
     const [lo, hi] = yearRange;
     const fy = _allYears.filter((y) => y >= lo && y <= hi);
-    if (fy.length < 2) return;
-    if (_yearA < lo || _yearA > hi) _yearA = fy[0];
-    if (_yearB < lo || _yearB > hi) _yearB = fy[fy.length - 1];
+    if (!fy.length) return;
+
+    // Section slider is authoritative: keep dropdown endpoints locked to slider bounds.
+    _yearA = fy[0];
+    _yearB = fy[fy.length - 1];
+
     [_selectA, _selectB].forEach((sel, i) => {
       sel.selectAll("option").remove();
       fy.forEach((y) =>
@@ -440,7 +514,12 @@ export function updateSlopeChart(alcoholDrug, breathTests, yearRange, states) {
   render(true);
 }
 
-export function computeSection3Insight(alcoholDrug, breathTests) {
+export function computeSection3Insight(
+  alcoholDrug,
+  breathTests,
+  drugTests,
+  metric = "alcohol",
+) {
   const years = [
     ...new Set(alcoholDrug.map((d) => d.YEAR).filter((y) => y != null)),
   ].sort((a, b) => a - b);
@@ -452,8 +531,8 @@ export function computeSection3Insight(alcoholDrug, breathTests) {
   ];
   const changes = [];
   for (const j of jurisdictions) {
-    const rF = calcRate(alcoholDrug, breathTests, j, first);
-    const rL = calcRate(alcoholDrug, breathTests, j, last);
+    const rF = calcRate(alcoholDrug, breathTests, drugTests, j, first, metric);
+    const rL = calcRate(alcoholDrug, breathTests, drugTests, j, last, metric);
     if (rF == null || rL == null) continue;
     changes.push({ j, rF, rL, change: rL - rF });
   }
@@ -461,5 +540,7 @@ export function computeSection3Insight(alcoholDrug, breathTests) {
   changes.sort((a, b) => a.change - b.change);
   const best = changes[0],
     worst = changes[changes.length - 1];
-  return `<strong>${best.j.toUpperCase()}</strong> showed the greatest improvement, dropping positivity from <strong>${best.rF.toFixed(2)}%</strong> to <strong>${best.rL.toFixed(2)}%</strong> (${first}&ndash;${last}). Meanwhile, <strong>${worst.j.toUpperCase()}</strong> saw the largest deterioration, rising from <strong>${worst.rF.toFixed(2)}%</strong> to <strong>${worst.rL.toFixed(2)}%</strong>.`;
+  const metricLabel =
+    metric === "drug" ? "drug-test positivity" : "breath-test positivity";
+  return `<strong>${best.j.toUpperCase()}</strong> showed the greatest improvement in ${metricLabel}, dropping from <strong>${best.rF.toFixed(2)}%</strong> to <strong>${best.rL.toFixed(2)}%</strong> (${first}&ndash;${last}). Meanwhile, <strong>${worst.j.toUpperCase()}</strong> saw the largest deterioration, rising from <strong>${worst.rF.toFixed(2)}%</strong> to <strong>${worst.rL.toFixed(2)}%</strong>.`;
 }

@@ -552,6 +552,7 @@ function buildSection01Insight(data, yearRange) {
 async function init() {
   try {
     const data = await loadAllData();
+    let section3Metric = "alcohol";
 
     // Hide spinner
     overlay.classList.add("hidden");
@@ -599,8 +600,20 @@ async function init() {
     }
 
     // ── Init Section 3 charts ──
-    initSlopeChart("#slopechart-container", data.alcoholDrug, data.breathTests);
-    initScatter("#scatter-container", data.alcoholDrug, data.breathTests);
+    initSlopeChart(
+      "#slopechart-container",
+      data.alcoholDrug,
+      data.breathTests,
+      data.drugTests,
+      section3Metric,
+    );
+    initScatter(
+      "#scatter-container",
+      data.alcoholDrug,
+      data.breathTests,
+      data.drugTests,
+      section3Metric,
+    );
 
     // Section 3 insight
     const insight03 = document.getElementById("section-03-insight");
@@ -608,7 +621,38 @@ async function init() {
       insight03.innerHTML = computeSection3Insight(
         data.alcoholDrug,
         data.breathTests,
+        data.drugTests,
+        section3Metric,
       );
+    }
+
+    const section03Toggle = document.getElementById("section-03-metric-toggle");
+    if (section03Toggle) {
+      section03Toggle.innerHTML = `
+        <div class="dualaxis-toggle" role="group" aria-label="Section 3 metric">
+          <button class="toggle-btn active" data-metric="alcohol" aria-pressed="true" type="button">Alcohol</button>
+          <button class="toggle-btn" data-metric="drug" aria-pressed="false" type="button">Drug</button>
+        </div>
+      `;
+
+      section03Toggle.addEventListener("click", (event) => {
+        const btn = event.target.closest(".toggle-btn");
+        if (!btn) return;
+        const metric = btn.dataset.metric;
+        if (!metric || metric === section3Metric) return;
+        section3Metric = metric;
+
+        section03Toggle.querySelectorAll(".toggle-btn").forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle("active", active);
+          b.setAttribute("aria-pressed", String(active));
+        });
+
+        const st = filterControllers["section-03"]?.getState();
+        const yr = st ? st.yearRange : null;
+        const states = st ? st.states : [];
+        queueSectionUpdate("section-03", yr, states);
+      });
     }
 
     // ── Init Section 4 chart ──
@@ -650,8 +694,30 @@ async function init() {
       }
 
       if (sectionId === "section-03") {
-        updateSlopeChart(data.alcoholDrug, data.breathTests, yr, states);
-        updateScatter(data.alcoholDrug, data.breathTests, yr, states);
+        updateSlopeChart(
+          data.alcoholDrug,
+          data.breathTests,
+          data.drugTests,
+          yr,
+          states,
+          section3Metric,
+        );
+        updateScatter(
+          data.alcoholDrug,
+          data.breathTests,
+          data.drugTests,
+          yr,
+          states,
+          section3Metric,
+        );
+        if (insight03) {
+          insight03.innerHTML = computeSection3Insight(
+            data.alcoholDrug,
+            data.breathTests,
+            data.drugTests,
+            section3Metric,
+          );
+        }
       }
 
       if (sectionId === "section-04") {

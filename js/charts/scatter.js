@@ -9,6 +9,10 @@ let _width, _height, _x, _y, _x0, _y0, _color, _zoom, _resetBtn;
 let _activeStates = [];
 let _activeYearRange = [0, 9999];
 let _lastFilterState = null;
+let _showHistory = false;
+let _historyToggleBtn;
+let _alcoholDrug, _breathTests, _drugTests;
+let _metric = "alcohol";
 const _margin = { top: 20, right: 20, bottom: 80, left: 58 };
 const TRANSITION_MS = 400;
 
@@ -27,6 +31,17 @@ function getPosTests(bt, j, yr) {
   return rows.length ? d3.sum(rows, (d) => d.positive_breath_tests || 0) : null;
 }
 
+function getDrugPosTests(dt, j, yr) {
+  const rows = dt.filter(
+    (d) =>
+      d.JURISDICTION === j &&
+      d.YEAR === yr &&
+      d.AGE_GROUP === "all ages" &&
+      d.METRIC === "positive_drug_tests",
+  );
+  return rows.length ? d3.sum(rows, (d) => d.COUNT || 0) : null;
+}
+
 // Nice tick values for log scales
 function logTicks(domain) {
   const lo = domain[0],
@@ -42,15 +57,12 @@ function fmtTick(v) {
   return v;
 }
 
-export function initScatter(selector, alcoholDrug, breathTests) {
-  _container = d3.select(selector);
-  _container.html("");
-
+function rebuildPointData() {
   const jurisdictions = [
-    ...new Set(alcoholDrug.map((d) => d.JURISDICTION).filter(Boolean)),
+    ...new Set(_alcoholDrug.map((d) => d.JURISDICTION).filter(Boolean)),
   ].sort();
   const years = [
-    ...new Set(alcoholDrug.map((d) => d.YEAR).filter((y) => y != null)),
+    ...new Set(_alcoholDrug.map((d) => d.YEAR).filter((y) => y != null)),
   ].sort((a, b) => a - b);
   const maxYear = years[years.length - 1];
   _activeYearRange = [years[0], maxYear];
@@ -58,28 +70,31 @@ export function initScatter(selector, alcoholDrug, breathTests) {
   _allData = [];
   for (const j of jurisdictions) {
     for (const yr of years) {
-      const tRow = alcoholDrug.find(
+      const tRow = _alcoholDrug.find(
         (d) => d.JURISDICTION === j && d.YEAR === yr,
       );
-      const posTotal = getPosTests(breathTests, j, yr);
-      if (
-        !tRow ||
-        posTotal == null ||
-        !tRow.breath_test_conducted ||
-        tRow.breath_test_conducted <= 0
-      )
-        continue;
+      if (!tRow) continue;
+
+      const tests =
+        _metric === "drug"
+          ? tRow.drug_test_conducted || 0
+          : tRow.breath_test_conducted || 0;
+      const posTotal =
+        _metric === "drug"
+          ? getDrugPosTests(_drugTests, j, yr)
+          : getPosTests(_breathTests, j, yr);
+
+      if (!tests || tests <= 0 || posTotal == null) continue;
       _allData.push({
         jurisdiction: j,
         year: yr,
-        tests: tRow.breath_test_conducted,
-        rate: (posTotal / tRow.breath_test_conducted) * 100,
+        tests,
+        rate: (posTotal / tests) * 100,
         isLatest: yr === maxYear,
       });
     }
   }
 
-  // Warm, distinct palette
   _color = d3
     .scaleOrdinal()
     .domain(jurisdictions)
@@ -93,6 +108,23 @@ export function initScatter(selector, alcoholDrug, breathTests) {
       "#AF7AA1",
       "#FF9DA7",
     ]);
+}
+
+export function initScatter(
+  selector,
+  alcoholDrug,
+  breathTests,
+  drugTests,
+  metric = "alcohol",
+) {
+  _container = d3.select(selector);
+  _container.html("");
+  _alcoholDrug = alcoholDrug;
+  _breathTests = breathTests;
+  _drugTests = drugTests;
+  _metric = metric;
+
+  rebuildPointData();
 
   const cw = _container.node().clientWidth || 520;
   _width = cw - _margin.left - _margin.right;
@@ -110,6 +142,22 @@ export function initScatter(selector, alcoholDrug, breathTests) {
         .ease(d3.easeCubicInOut)
         .call(_zoom.transform, d3.zoomIdentity);
       _resetBtn.style("display", "none");
+    });
+
+  const ctrlRow = _container.append("div").attr("class", "scatter-controls");
+  _historyToggleBtn = ctrlRow
+    .append("button")
+    .attr("type", "button")
+    .attr("class", "scatter-toggle-btn")
+    .attr("aria-pressed", "false")
+    .text("Show history trails")
+    .on("click", () => {
+      _showHistory = !_showHistory;
+      _historyToggleBtn
+        .classed("active", _showHistory)
+        .attr("aria-pressed", String(_showHistory))
+        .text(_showHistory ? "Hide history trails" : "Show history trails");
+      draw();
     });
 
   _svg = _container
@@ -163,18 +211,12 @@ function buildScales() {
   const tests = _allData.map((d) => d.tests).filter((t) => t > 0);
   const minT = d3.min(tests),
     maxT = d3.max(tests);
-  const useLog = maxT / minT >= 10;
 
-  _x = useLog
-    ? d3
-        .scaleLog()
-        .domain([minT * 0.6, maxT * 1.5])
-        .range([0, _width])
-    : d3
-        .scaleLinear()
-        .domain([0, maxT * 1.15])
-        .range([0, _width])
-        .nice();
+  // Always use log on x to reduce NT/remote-state outlier compression.
+  _x = d3
+    .scaleLog()
+    .domain([Math.max(1, minT * 0.6), maxT * 1.5])
+    .range([0, _width]);
 
   const rates = _allData.map((d) => d.rate);
   _y = d3
@@ -202,11 +244,9 @@ function draw() {
   });
 
   // Axes
-  const isLog = _x.base !== undefined; // log scale has .base
-  const xTickVals = isLog ? logTicks(_x.domain()) : null;
+  const xTickVals = logTicks(_x.domain());
   const xAxisGen = d3.axisBottom(_x).tickFormat((d) => fmtTick(d));
-  if (xTickVals) xAxisGen.tickValues(xTickVals);
-  else xAxisGen.ticks(6).tickFormat(d3.format(".2s"));
+  xAxisGen.tickValues(xTickVals);
 
   _g.append("g")
     .attr("class", "x-axis")
@@ -252,7 +292,6 @@ function draw() {
   // Content layer (clipped)
   const content = _g.append("g").attr("clip-path", "url(#sc-clip)");
   const visible = vis();
-  const isFiltered = _activeStates.length > 0;
 
   if (!visible.length) {
     _g.append("text")
@@ -263,20 +302,73 @@ function draw() {
     return;
   }
 
-  // Regression (visible data only)
-  if (visible.length >= 2) {
-    const n = visible.length;
-    const sx = d3.sum(visible, (d) => d.tests),
-      sy = d3.sum(visible, (d) => d.rate);
-    const sxy = d3.sum(visible, (d) => d.tests * d.rate),
-      sx2 = d3.sum(visible, (d) => d.tests ** 2);
+  const byJurisdiction = d3.group(visible, (d) => d.jurisdiction);
+  const latestPoints = Array.from(byJurisdiction.values())
+    .map((rows) =>
+      rows
+        .slice()
+        .sort((a, b) => a.year - b.year)
+        .at(-1),
+    )
+    .filter(Boolean);
+
+  const historyPoints = _showHistory
+    ? visible.filter(
+        (d) =>
+          !latestPoints.some(
+            (l) => l.jurisdiction === d.jurisdiction && l.year === d.year,
+          ),
+      )
+    : [];
+
+  if (_showHistory) {
+    byJurisdiction.forEach((rows, jurisdiction) => {
+      const sorted = rows.slice().sort((a, b) => a.year - b.year);
+      if (sorted.length < 2) return;
+      content
+        .append("path")
+        .datum(sorted)
+        .attr("fill", "none")
+        .attr("stroke", _color(jurisdiction))
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.25)
+        .attr(
+          "d",
+          d3
+            .line()
+            .x((d) => _x(d.tests))
+            .y((d) => _y(d.rate)),
+        );
+    });
+
+    historyPoints.forEach((d) => {
+      content
+        .append("circle")
+        .attr("cx", _x(d.tests))
+        .attr("cy", _y(d.rate))
+        .attr("r", 3)
+        .attr("fill", _color(d.jurisdiction))
+        .attr("opacity", 0.28);
+    });
+  }
+
+  // Regression based on latest-year points only for clearer interpretation.
+  if (latestPoints.length >= 2) {
+    const n = latestPoints.length;
+    const sx = d3.sum(latestPoints, (d) => d.tests),
+      sy = d3.sum(latestPoints, (d) => d.rate);
+    const sxy = d3.sum(latestPoints, (d) => d.tests * d.rate),
+      sx2 = d3.sum(latestPoints, (d) => d.tests ** 2);
     const denom = n * sx2 - sx * sx;
     if (Math.abs(denom) > 1e-10) {
       const m = (n * sxy - sx * sy) / denom;
       const b = (sy - m * sx) / n;
       const yMean = sy / n;
-      const ssTot = d3.sum(visible, (d) => (d.rate - yMean) ** 2);
-      const ssRes = d3.sum(visible, (d) => (d.rate - (m * d.tests + b)) ** 2);
+      const ssTot = d3.sum(latestPoints, (d) => (d.rate - yMean) ** 2);
+      const ssRes = d3.sum(
+        latestPoints,
+        (d) => (d.rate - (m * d.tests + b)) ** 2,
+      );
       const r2 = ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 0;
 
       const xD = _x.domain();
@@ -310,40 +402,44 @@ function draw() {
         .attr("fill", "#5C5C5C")
         .attr("font-size", "12px")
         .attr("font-weight", 600)
-        .text(`R\u00B2 = ${r2.toFixed(2)}`);
+        .text(`R\u00B2 (latest-year points) = ${r2.toFixed(2)}`);
+
+      const strength =
+        r2 < 0.2
+          ? "very weak"
+          : r2 < 0.4
+            ? "weak"
+            : r2 < 0.6
+              ? "moderate"
+              : "strong";
+      const direction = m < 0 ? "negative" : m > 0 ? "positive" : "flat";
+      const explanation =
+        m < 0
+          ? `${strength} ${direction} correlation.`
+          : `${strength} ${direction} correlation.`;
+
+      _g.append("text")
+        .attr("x", _width - 6)
+        .attr("y", 30)
+        .attr("text-anchor", "end")
+        .attr("fill", "#7A7874")
+        .attr("font-size", "12px")
+        .text(explanation);
     }
   }
 
-  // Background dots (unselected)
-  if (isFiltered) {
-    _allData
-      .filter((d) => !_activeStates.includes(d.jurisdiction))
-      .forEach((d) => {
-        content
-          .append("circle")
-          .attr("cx", _x(d.tests))
-          .attr("cy", _y(d.rate))
-          .attr("r", 3.5)
-          .attr("fill", "#D8D8D8")
-          .attr("opacity", 0.3);
-      });
-  }
-
-  // Active dots
-  const active = isFiltered
-    ? _allData.filter((d) => _activeStates.includes(d.jurisdiction))
-    : _allData;
-  active.forEach((d) => {
+  // Latest points are the primary marks.
+  latestPoints.forEach((d) => {
     content
       .append("circle")
       .attr("class", "sc-dot")
       .attr("cx", _x(d.tests))
       .attr("cy", _y(d.rate))
-      .attr("r", 6)
+      .attr("r", 7)
       .attr("fill", _color(d.jurisdiction))
       .attr("stroke", "#fff")
       .attr("stroke-width", 2)
-      .attr("opacity", 0.88)
+      .attr("opacity", 0.95)
       .style("cursor", "pointer")
       .attr("tabindex", 0)
       .on("mouseover", function (ev) {
@@ -351,10 +447,10 @@ function draw() {
           .transition()
           .duration(TRANSITION_MS)
           .ease(d3.easeCubicInOut)
-          .attr("r", 10)
+          .attr("r", 11)
           .attr("stroke-width", 3);
         tooltip.show(
-          `<strong>${d.jurisdiction.toUpperCase()}</strong> (${d.year})<br>Tests: ${d3.format(",")(d.tests)}<br>Positivity: ${d.rate.toFixed(2)}%`,
+          `<strong>${d.jurisdiction.toUpperCase()}</strong> (${d.year}, latest in range)<br>Tests: ${d3.format(",")(d.tests)}<br>Positivity: ${d.rate.toFixed(2)}%`,
           ev,
         );
       })
@@ -364,7 +460,7 @@ function draw() {
           .transition()
           .duration(TRANSITION_MS)
           .ease(d3.easeCubicInOut)
-          .attr("r", 6)
+          .attr("r", 7)
           .attr("stroke-width", 2);
         tooltip.hide();
       })
@@ -373,7 +469,7 @@ function draw() {
           .transition()
           .duration(TRANSITION_MS)
           .ease(d3.easeCubicInOut)
-          .attr("r", 10)
+          .attr("r", 11)
           .attr("stroke-width", 3);
       })
       .on("blur", function () {
@@ -381,13 +477,13 @@ function draw() {
           .transition()
           .duration(TRANSITION_MS)
           .ease(d3.easeCubicInOut)
-          .attr("r", 6)
+          .attr("r", 7)
           .attr("stroke-width", 2);
       });
   });
 
-  // Labels (latest year, max 1 per jurisdiction, avoid clutter)
-  const labelData = active.filter((d) => d.isLatest);
+  // Labels (latest points only, conservative collision handling)
+  const labelData = latestPoints;
   const labelPositions = labelData.map((d) => ({
     ...d,
     lx: _x(d.tests),
@@ -451,18 +547,33 @@ function zoomed(event) {
   );
 }
 
-export function updateScatter(alcoholDrug, breathTests, yearRange, states) {
+export function updateScatter(
+  alcoholDrug,
+  breathTests,
+  drugTests,
+  yearRange,
+  states,
+  metric = "alcohol",
+) {
   const nextStates = states && states.length > 0 ? [...states].sort() : [];
   const nextRange = yearRange ? [...yearRange] : [0, 9999];
-  const nextState = { states: nextStates, yearRange: nextRange };
+  const nextState = { states: nextStates, yearRange: nextRange, metric };
   if (
     _lastFilterState &&
     sameArray(_lastFilterState.states, nextState.states) &&
-    sameArray(_lastFilterState.yearRange, nextState.yearRange)
+    sameArray(_lastFilterState.yearRange, nextState.yearRange) &&
+    _lastFilterState.metric === nextState.metric
   ) {
     return;
   }
   _lastFilterState = nextState;
+
+  _alcoholDrug = alcoholDrug;
+  _breathTests = breathTests;
+  _drugTests = drugTests;
+  _metric = metric;
+  rebuildPointData();
+  buildScales();
 
   _activeStates = states && states.length > 0 ? states : [];
   if (yearRange) {

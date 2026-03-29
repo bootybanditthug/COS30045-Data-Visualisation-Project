@@ -85,7 +85,7 @@ function findAnnotations(joined) {
   if (peakIdx >= 0) {
     annotations.push({
       year: joined[peakIdx].year,
-      label: "Peak testing volume",
+      label: "Largest YoY increase in testing",
       position: "top",
     });
   }
