@@ -675,7 +675,7 @@ async function init() {
       const combinedYears = [...allYears, ...fYears];
       const minY = Math.min(...combinedYears);
       const maxY = Math.max(...combinedYears);
-      footerSource.textContent = `Source: Bureau of Infrastructure and Transport Research Economics (BITRE), Police Enforcement Dataset. ${minY}\u2013${maxY}.`;
+      footerSource.innerHTML = `Source: Bureau of Infrastructure and Transport Research Economics (BITRE), Police Enforcement Dataset. <span class="nowrap">${minY}\u2013${maxY}.</span>`;
     }
 
     const pendingSectionUpdates = new Map();
