@@ -1,199 +1,297 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="RoadEnforce AU — an investigation into 16 years of enforcement data across Australian jurisdictions and public safety outcomes.">
-  <title>RoadEnforce AU — Road Safety Enforcement Analysis</title>
-  <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-</head>
-<body>
-  <!-- Navigation -->
-  <nav id="main-nav">
-    <div class="nav-container">
-      <div class="nav-left">
-        <a href="#" class="nav-brand">&#x1F6A6; RoadEnforce AU</a>
-      </div>
-      <div class="nav-center">
-        <a href="#section-01" class="nav-link">Enforcement</a>
-        <a href="#section-02" class="nav-link">Effort vs Impact</a>
-        <a href="#section-03" class="nav-link">State Comparison</a>
-        <a href="#section-04" class="nav-link">Fine Composition</a>
-      </div>
-      <div class="nav-right">
-        <span id="nav-year-range"></span>
-      </div>
-      <div class="nav-mobile-toggle" id="nav-mobile-toggle">
-        <span class="hamburger"></span>
-      </div>
-    </div>
-  </nav>
-
-  <!-- Mobile Navigation Overlay -->
-  <div class="nav-mobile-overlay" id="nav-mobile-overlay">
-    <div class="nav-mobile-links">
-      <a href="#section-01" class="nav-link mobile-link">Enforcement</a>
-      <a href="#section-02" class="nav-link mobile-link">Effort vs Impact</a>
-      <a href="#section-03" class="nav-link mobile-link">State Comparison</a>
-      <a href="#section-04" class="nav-link mobile-link">Fine Composition</a>
-    </div>
-  </div>
-
-  <!-- Loading Overlay -->
-  <div id="loading-overlay">
-    <div class="spinner"></div>
-    <div id="error-message"></div>
-  </div>
-
-  <!-- Hero Section -->
-  <section id="hero">
-    <div class="container hero-container">
-      <div class="hero-content">
-        <div class="hero-left">
-          <h1>Does cracking down on road safety actually work?</h1>
-          <p class="hero-subtitle" id="hero-subtitle">An investigation across 16 years of enforcement data, testing volumes, positivity rates, and public safety in Australia.</p>
-          <button class="btn-explore" onclick="document.getElementById('section-01').scrollIntoView({behavior: 'smooth'})">Explore the data &darr;</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="RoadEnforce AU — an investigation into 16 years of enforcement data across Australian jurisdictions and public safety outcomes."
+    />
+    <title>RoadEnforce AU — Road Safety Enforcement Analysis</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav id="main-nav">
+      <div class="nav-container">
+        <div class="nav-left">
+          <a href="#" class="nav-brand">&#x1F6A6; RoadEnforce AU</a>
         </div>
-        <div class="hero-right">
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-label" id="kpi-1-label">Total breath tests</div>
-              <div class="kpi-value" id="kpi-1-value">&mdash;</div>
-              <div class="kpi-trend" id="kpi-1-trend">&mdash;</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label" id="kpi-2-label">Avg positivity rate</div>
-              <div class="kpi-value" id="kpi-2-value">&mdash;</div>
-              <div class="kpi-trend" id="kpi-2-trend">&mdash;</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label" id="kpi-3-label">Drug tests</div>
-              <div class="kpi-value" id="kpi-3-value">&mdash;</div>
-              <div class="kpi-trend" id="kpi-3-trend">&mdash;</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label" id="kpi-4-label">Total fines recorded</div>
-              <div class="kpi-value" id="kpi-4-value">&mdash;</div>
-              <div class="kpi-trend" id="kpi-4-trend">&mdash;</div>
+        <div class="nav-center">
+          <a href="#section-01" class="nav-link">Enforcement</a>
+          <a href="#section-02" class="nav-link">Effort vs Impact</a>
+          <a href="#section-03" class="nav-link">State Comparison</a>
+          <a href="#section-04" class="nav-link">Fine Composition</a>
+        </div>
+        <div class="nav-right">
+          <span id="nav-year-range"></span>
+        </div>
+        <button
+          class="nav-mobile-toggle"
+          id="nav-mobile-toggle"
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          aria-controls="nav-mobile-overlay"
+          type="button"
+        >
+          <span class="hamburger"></span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile Navigation Overlay -->
+    <div class="nav-mobile-overlay" id="nav-mobile-overlay">
+      <div class="nav-mobile-links">
+        <a href="#section-01" class="nav-link mobile-link">Enforcement</a>
+        <a href="#section-02" class="nav-link mobile-link">Effort vs Impact</a>
+        <a href="#section-03" class="nav-link mobile-link">State Comparison</a>
+        <a href="#section-04" class="nav-link mobile-link">Fine Composition</a>
+      </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div
+      id="loading-overlay"
+      role="status"
+      aria-label="Loading data"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div class="spinner"></div>
+      <div id="error-message"></div>
+    </div>
+
+    <div aria-live="polite" class="sr-only" id="chart-live-region"></div>
+
+    <!-- Hero Section -->
+    <section id="hero">
+      <div class="container hero-container">
+        <div class="hero-content">
+          <div class="hero-left">
+            <h1>Does cracking down on road safety actually work?</h1>
+            <p class="hero-subtitle" id="hero-subtitle">
+              An investigation across 16 years of enforcement data, testing
+              volumes, positivity rates, and public safety in Australia.
+            </p>
+            <button
+              class="btn-explore"
+              onclick="
+                document
+                  .getElementById('section-01')
+                  .scrollIntoView({ behavior: 'smooth' })
+              "
+            >
+              Explore the data &darr;
+            </button>
+          </div>
+          <div class="hero-right">
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-label" id="kpi-1-label">Total breath tests</div>
+                <div class="kpi-value" id="kpi-1-value">&mdash;</div>
+                <div class="kpi-trend" id="kpi-1-trend">&mdash;</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label" id="kpi-2-label">
+                  Avg positivity rate
+                </div>
+                <div class="kpi-value" id="kpi-2-value">&mdash;</div>
+                <div class="kpi-trend" id="kpi-2-trend">&mdash;</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label" id="kpi-3-label">Drug tests</div>
+                <div class="kpi-value" id="kpi-3-value">&mdash;</div>
+                <div class="kpi-trend" id="kpi-3-trend">&mdash;</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label" id="kpi-4-label">
+                  Total fines recorded
+                </div>
+                <div class="kpi-value" id="kpi-4-value">&mdash;</div>
+                <div class="kpi-trend" id="kpi-4-trend">&mdash;</div>
+              </div>
             </div>
           </div>
         </div>
+        <div class="hero-chips">
+          <button
+            class="chip"
+            onclick="
+              document
+                .getElementById('section-01')
+                .scrollIntoView({ behavior: 'smooth' })
+            "
+          >
+            Enforcement
+          </button>
+          <button
+            class="chip"
+            onclick="
+              document
+                .getElementById('section-02')
+                .scrollIntoView({ behavior: 'smooth' })
+            "
+          >
+            Effort vs Impact
+          </button>
+          <button
+            class="chip"
+            onclick="
+              document
+                .getElementById('section-03')
+                .scrollIntoView({ behavior: 'smooth' })
+            "
+          >
+            State Comparison
+          </button>
+          <button
+            class="chip"
+            onclick="
+              document
+                .getElementById('section-04')
+                .scrollIntoView({ behavior: 'smooth' })
+            "
+          >
+            Fine Composition
+          </button>
+        </div>
       </div>
-      <div class="hero-chips">
-        <button class="chip" onclick="document.getElementById('section-01').scrollIntoView({behavior: 'smooth'})">Enforcement</button>
-        <button class="chip" onclick="document.getElementById('section-02').scrollIntoView({behavior: 'smooth'})">Effort vs Impact</button>
-        <button class="chip" onclick="document.getElementById('section-03').scrollIntoView({behavior: 'smooth'})">State Comparison</button>
-        <button class="chip" onclick="document.getElementById('section-04').scrollIntoView({behavior: 'smooth'})">Fine Composition</button>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Section 01: Enforcement Intensity -->
-  <section id="section-01">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-badge">01</span>
-        <span class="section-label">Overview</span>
-        <h2>Enforcement intensity across the continent</h2>
-        <p class="section-subtitle">Testing volumes vary dramatically across states, revealing a patchwork of enforcement effort and priorities.</p>
-      </div>
-      <div class="filter-bar" id="section-01-filters"></div>
+    <!-- Section 01: Enforcement Intensity -->
+    <section id="section-01">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-badge">01</span>
+          <span class="section-label">Overview</span>
+          <h2>Enforcement intensity across the continent</h2>
+          <p class="section-subtitle">
+            Testing volumes vary dramatically across states, revealing a
+            patchwork of enforcement effort and priorities.
+          </p>
+        </div>
+        <div class="filter-bar" id="section-01-filters"></div>
 
-      <!-- Map row: full bleed dark card -->
-      <div class="s1-map-card">
-        <div class="s1-map-row">
-          <div class="s1-map-area">
-            <div id="choropleth-container"></div>
+        <!-- Map row: full bleed dark card -->
+        <div class="s1-map-card">
+          <div class="s1-map-row">
+            <div class="s1-map-area">
+              <div id="choropleth-container"></div>
+            </div>
+            <div class="s1-bar-area">
+              <div id="barchart-container"></div>
+            </div>
           </div>
-          <div class="s1-bar-area">
-            <div id="barchart-container"></div>
+        </div>
+
+        <!-- Insight -->
+        <div id="section-01-insight" class="insight-box"></div>
+      </div>
+    </section>
+
+    <!-- Section 02: Effort vs Impact -->
+    <section id="section-02">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-badge">02</span>
+          <span class="section-label">Analysis</span>
+          <h2>Effort vs impact: a decoupled trend?</h2>
+          <p class="section-subtitle">
+            Are more tests resulting in proportionately fewer offences over
+            time?
+          </p>
+        </div>
+        <div class="filter-bar" id="section-02-filters"></div>
+        <div class="chart-layout">
+          <div id="dualaxis-container" class="chart-area full-width">
+            Chart loading...
+          </div>
+          <div id="section-02-insight" class="insight-box"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 03: State Comparison -->
+    <section id="section-03">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-badge">03</span>
+          <span class="section-label">State breakdown</span>
+          <h2>States in motion: the comparison</h2>
+          <p class="section-subtitle">
+            Which states lead in enforcement, and how does impact vary across
+            jurisdictions?
+          </p>
+        </div>
+        <div class="filter-bar" id="section-03-filters"></div>
+        <div class="chart-layout">
+          <div class="chart-row">
+            <div id="slopechart-container" class="chart-area half-width">
+              Chart loading...
+            </div>
+            <div id="scatter-container" class="chart-area half-width">
+              Chart loading...
+            </div>
+          </div>
+          <div id="section-03-insight" class="insight-box"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 04: Fine Composition -->
+    <section id="section-04">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-badge">04</span>
+          <span class="section-label">Financials</span>
+          <h2>The composition of enforcement fines</h2>
+          <p class="section-subtitle">
+            How has the composition of fines shifted among different
+            infringement categories?
+          </p>
+        </div>
+        <div class="filter-bar" id="section-04-filters"></div>
+        <div class="chart-layout">
+          <div id="stackedarea-container" class="chart-area full-width">
+            Chart loading...
+          </div>
+          <div
+            id="small-multiples-container"
+            class="small-multiples-grid"
+          ></div>
+          <div id="section-04-insight" class="insight-box"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="site-footer">
+      <div class="footer-grid">
+        <div class="footer-left">
+          <div class="footer-brand">RoadEnforce AU</div>
+          <div class="footer-sub">
+            COS30045 Data Visualisation &middot; Swinburne University Vietnam
+          </div>
+        </div>
+        <div class="footer-center">
+          <a href="#section-01">Enforcement</a>
+          <span class="footer-pipe">|</span>
+          <a href="#section-02">Effort vs Impact</a>
+          <span class="footer-pipe">|</span>
+          <a href="#section-03">State Comparison</a>
+          <span class="footer-pipe">|</span>
+          <a href="#section-04">Fine Composition</a>
+        </div>
+        <div class="footer-right">
+          <div class="footer-source" id="footer-source">
+            Source: Bureau of Infrastructure and Transport Research Economics
+            (BITRE), Police Enforcement Dataset.
           </div>
         </div>
       </div>
+    </footer>
 
-      <!-- Insight -->
-      <div id="section-01-insight" class="insight-box"></div>
-    </div>
-  </section>
-
-  <!-- Section 02: Effort vs Impact -->
-  <section id="section-02">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-badge">02</span>
-        <span class="section-label">Analysis</span>
-        <h2>Effort vs impact: a decoupled trend?</h2>
-        <p class="section-subtitle">Are more tests resulting in proportionately fewer offences over time?</p>
-      </div>
-      <div class="filter-bar" id="section-02-filters"></div>
-      <div class="chart-layout">
-        <div id="dualaxis-container" class="chart-area full-width">Chart loading...</div>
-        <div id="section-02-insight" class="insight-box"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Section 03: State Comparison -->
-  <section id="section-03">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-badge">03</span>
-        <span class="section-label">State breakdown</span>
-        <h2>States in motion: the comparison</h2>
-        <p class="section-subtitle">Which states lead in enforcement, and how does impact vary across jurisdictions?</p>
-      </div>
-      <div class="filter-bar" id="section-03-filters"></div>
-      <div class="chart-layout">
-        <div class="chart-row">
-          <div id="slopechart-container" class="chart-area half-width">Chart loading...</div>
-          <div id="scatter-container" class="chart-area half-width">Chart loading...</div>
-        </div>
-        <div id="section-03-insight" class="insight-box"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Section 04: Fine Composition -->
-  <section id="section-04">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-badge">04</span>
-        <span class="section-label">Financials</span>
-        <h2>The composition of enforcement fines</h2>
-        <p class="section-subtitle">How has the composition of fines shifted among different infringement categories?</p>
-      </div>
-      <div class="filter-bar" id="section-04-filters"></div>
-      <div class="chart-layout">
-        <div id="stackedarea-container" class="chart-area full-width">Chart loading...</div>
-        <div id="small-multiples-container" class="small-multiples-grid"></div>
-        <div id="section-04-insight" class="insight-box"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer id="site-footer">
-    <div class="footer-grid">
-      <div class="footer-left">
-        <div class="footer-brand">RoadEnforce AU</div>
-        <div class="footer-sub">COS30045 Data Visualisation &middot; Swinburne University Vietnam</div>
-      </div>
-      <div class="footer-center">
-        <a href="#section-01">Enforcement</a>
-        <span class="footer-pipe">|</span>
-        <a href="#section-02">Effort vs Impact</a>
-        <span class="footer-pipe">|</span>
-        <a href="#section-03">State Comparison</a>
-        <span class="footer-pipe">|</span>
-        <a href="#section-04">Fine Composition</a>
-      </div>
-      <div class="footer-right">
-        <div class="footer-source" id="footer-source">Source: Bureau of Infrastructure and Transport Research Economics (BITRE), Police Enforcement Dataset.</div>
-      </div>
-    </div>
-  </footer>
-
-  <script type="module" src="js/main.js"></script>
-</body>
+    <script type="module" src="js/main.js"></script>
+  </body>
 </html>
