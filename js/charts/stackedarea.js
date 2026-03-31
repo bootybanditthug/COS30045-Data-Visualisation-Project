@@ -5,6 +5,15 @@
 import { tooltip } from "../tooltip.js";
 
 const PALETTE = ["#1B6CC4", "#0F9E7B", "#E09420", "#E07055", "#9A9A9A"];
+
+// Fixed colors per known metric — prevents color-swapping when sort order changes by region
+const METRIC_COLOR = {
+  speed_fines:           "#1B6CC4",
+  non_wearing_seatbelts: "#0F9E7B",
+  mobile_phone_use:      "#E09420",
+  unlicensed_driving:    "#E07055",
+  Other:                 "#9A9A9A",
+};
 const MARGIN = { top: 30, right: 20, bottom: 44, left: 56 };
 
 let _container, _svg, _g, _finesRaw, _categories, _colorMap;
@@ -80,7 +89,19 @@ function buildGrouped(data) {
   if (hasOther) categories.push("Other");
 
   const colorMap = {};
-  categories.forEach((c, i) => (colorMap[c] = PALETTE[i] || PALETTE[4]));
+  // Use fixed per-metric colors; fall back to positional PALETTE for unknowns
+  let fallbackIdx = 0;
+  categories.forEach((c) => {
+    if (METRIC_COLOR[c]) {
+      colorMap[c] = METRIC_COLOR[c];
+    } else {
+      // Find an unused PALETTE slot for unknown metrics
+      const used = new Set(Object.values(colorMap));
+      while (fallbackIdx < PALETTE.length && used.has(PALETTE[fallbackIdx])) fallbackIdx++;
+      colorMap[c] = PALETTE[fallbackIdx] || PALETTE[4];
+      fallbackIdx++;
+    }
+  });
   const periods = [
     ...new Set(data.map(periodExtractor).filter((p) => p != null)),
   ].sort((a, b) => a - b);
