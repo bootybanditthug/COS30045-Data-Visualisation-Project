@@ -22,6 +22,7 @@ import {
   initStackedArea,
   updateStackedArea,
   renderSmallMultiples,
+  syncSmallMultipleSelection,
   computeSection4Insight,
 } from "./charts/stackedarea.js";
 
@@ -342,9 +343,32 @@ function buildFilterBar(sectionId, dataset) {
   const yearDiv = document.createElement("div");
   yearDiv.className = "filter-year-range";
 
-  const yearLabel = document.createElement("span");
-  yearLabel.className = "filter-year-label";
-  yearLabel.textContent = `${minYear} \u2192 ${maxYear}`;
+  const yearInputs = document.createElement("div");
+  yearInputs.className = "filter-year-inputs";
+
+  const inputMin = document.createElement("input");
+  inputMin.type = "number";
+  inputMin.min = minYear;
+  inputMin.max = maxYear;
+  inputMin.value = minYear;
+  inputMin.className = "filter-year-input";
+  inputMin.setAttribute("aria-label", "Type start year");
+
+  const arrowSpan = document.createElement("span");
+  arrowSpan.innerHTML = "&rarr;";
+  arrowSpan.className = "filter-year-arrow";
+
+  const inputMax = document.createElement("input");
+  inputMax.type = "number";
+  inputMax.min = minYear;
+  inputMax.max = maxYear;
+  inputMax.value = maxYear;
+  inputMax.className = "filter-year-input";
+  inputMax.setAttribute("aria-label", "Type end year");
+
+  yearInputs.appendChild(inputMin);
+  yearInputs.appendChild(arrowSpan);
+  yearInputs.appendChild(inputMax);
 
   const sliderGroup = document.createElement("div");
   sliderGroup.className = "year-slider-group";
@@ -372,7 +396,7 @@ function buildFilterBar(sectionId, dataset) {
   clearBtn.textContent = "Clear";
 
   yearDiv.appendChild(sliderGroup);
-  yearDiv.appendChild(yearLabel);
+  yearDiv.appendChild(yearInputs);
   yearDiv.appendChild(clearBtn);
   container.appendChild(yearDiv);
 
@@ -464,7 +488,8 @@ function buildFilterBar(sectionId, dataset) {
 
   // ── Slider handling ──
   function updateYearLabel() {
-    yearLabel.textContent = `${startYear} \u2192 ${endYear}`;
+    inputMin.value = startYear;
+    inputMax.value = endYear;
   }
 
   sliderMin.addEventListener("input", () => {
@@ -484,6 +509,26 @@ function buildFilterBar(sectionId, dataset) {
       sliderMax.value = endYear;
     }
     updateYearLabel();
+    dispatchFilterChange("section");
+  });
+
+  inputMin.addEventListener("change", () => {
+    let val = parseInt(inputMin.value, 10);
+    if (isNaN(val)) val = minYear;
+    val = Math.max(minYear, Math.min(endYear, val)); // Don't go above endYear
+    startYear = val;
+    inputMin.value = startYear;
+    sliderMin.value = startYear;
+    dispatchFilterChange("section");
+  });
+
+  inputMax.addEventListener("change", () => {
+    let val = parseInt(inputMax.value, 10);
+    if (isNaN(val)) val = maxYear;
+    val = Math.max(startYear, Math.min(maxYear, val)); // Don't go below startYear
+    endYear = val;
+    inputMax.value = endYear;
+    sliderMax.value = endYear;
     dispatchFilterChange("section");
   });
 
@@ -722,6 +767,7 @@ async function init() {
 
       if (sectionId === "section-04") {
         updateStackedArea(data.fines, yr, states);
+        syncSmallMultipleSelection(states || []);
       }
     }
 
@@ -757,6 +803,36 @@ async function init() {
 
       queueSectionUpdate(sectionId, yr, states || []);
     });
+
+    // Sync section-04 filter pills when a small multiple is clicked
+    document.addEventListener("stacked-jurisdiction-filter", (e) => {
+      const { jurisdiction } = e.detail;
+      const ctrl = filterControllers["section-04"];
+      if (!ctrl) return;
+      const st = ctrl.getState();
+      // Toggle: if this jurisdiction is already the sole active state, clear it
+      const next =
+        st.states.length === 1 && st.states[0] === jurisdiction
+          ? []
+          : [jurisdiction];
+      ctrl.setStates(next, "small-multiples");
+      syncSmallMultipleSelection(next);
+    });
+
+    // Setup Back to Top button
+    const backToTopBtn = document.getElementById("back-to-top");
+    if (backToTopBtn) {
+      window.addEventListener("scroll", () => {
+        if (window.scrollY > 500) {
+          backToTopBtn.classList.add("visible");
+        } else {
+          backToTopBtn.classList.remove("visible");
+        }
+      });
+      backToTopBtn.addEventListener("click", () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
   } catch (err) {
     console.error("Failed to load data:", err);
     const spinner = overlay.querySelector(".spinner");

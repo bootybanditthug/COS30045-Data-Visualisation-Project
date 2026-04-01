@@ -144,6 +144,7 @@ export function initChoropleth(selector, geoJSON, csvData) {
     .attr("stroke-width", 0.5)
     .attr("tabindex", 0)
     .style("cursor", "pointer")
+    .style("outline", "none")
     .on("mouseenter", function (event, d) {
       const stMap = aggregateByState(currentData, yearRange);
       const val = stMap.get(d._jurisdiction) || 0;

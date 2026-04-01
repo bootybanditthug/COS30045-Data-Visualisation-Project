@@ -104,6 +104,8 @@ export function initBarChart(selector, data) {
       "Grouped bar chart showing breath tests and drug tests conducted per Australian jurisdiction",
     );
 
+  svg.append("defs");
+
   chart = svg
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
@@ -179,6 +181,7 @@ export function initBarChart(selector, data) {
 function drawBars(agg, animate) {
   gBars.selectAll("*").remove();
   gLabels.selectAll("*").remove();
+  svg.select("defs").selectAll("clipPath").remove();
 
   if (!agg.length) {
     const fallbackY = (yScale.range()[1] || 180) / 2;
@@ -193,6 +196,18 @@ function drawBars(agg, animate) {
 
   agg.forEach((row, i) => {
     let xOffset = 0;
+    const totalW = xScale(row.total);
+
+    // Clip the whole row to a rounded rect so both ends of the stacked bar look rounded
+    const clipId = `clip-bar-${row.jurisdiction}`;
+    svg.select("defs").append("clipPath")
+      .attr("id", clipId)
+      .append("rect")
+      .attr("x", 0)
+      .attr("y", yScale(row.jurisdiction))
+      .attr("width", totalW)
+      .attr("height", yScale.bandwidth())
+      .attr("rx", 4);
 
     testColumns.forEach((col) => {
       const val = row[col] || 0;
@@ -207,10 +222,12 @@ function drawBars(agg, animate) {
         .attr("y", yScale(row.jurisdiction))
         .attr("height", yScale.bandwidth())
         .attr("width", animate ? 0 : barW)
-        .attr("rx", col === testColumns[testColumns.length - 1] ? 4 : 0)
+        .attr("rx", 0)
         .attr("fill", typeColors[col])
         .attr("opacity", 0.9)
         .attr("tabindex", 0)
+        .style("outline", "none")
+        .attr("clip-path", `url(#${clipId})`)
         .on("mouseover", function (event) {
           d3.select(this).attr("opacity", 1);
           tooltip.show(
@@ -345,8 +362,9 @@ export function updateBarChart(filteredData, newYearRange, newHighlightStates) {
     .transition()
     .duration(TRANSITION_MS)
     .ease(d3.easeCubicInOut)
-    .call(d3.axisLeft(yScale).tickSize(0))
-    .call((g) => g.select(".domain").remove());
+    .call(d3.axisLeft(yScale).tickSize(0));
+
+  gYAxis.select(".domain").remove();
 
   gYAxis
     .selectAll("text")

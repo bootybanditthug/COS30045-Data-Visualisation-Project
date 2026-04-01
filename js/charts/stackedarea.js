@@ -21,6 +21,11 @@ let _width, _height, _x, _y, _periods, _stackData, _mode, _hiddenCats;
 let _lockedCat = null,
   _periodLabels;
 let _lastFilterState = null;
+let _smSelector = null;   // small-multiples container selector
+let _smFinesRaw = null;   // full raw fines data for small multiples
+let _smYearRange = null;  // current year filter applied to small multiples
+let _globalCatOrder = null; // category order from full dataset — never reordered
+let _globalColorMap = null; // color map from full dataset
 const TRANSITION_MS = 400;
 
 function sameArray(a = [], b = []) {
@@ -143,6 +148,9 @@ export function initStackedArea(selector, finesData) {
   _periods = r.periods;
   _stackData = r.stackData;
   _periodLabels = r.periodLabel;
+  // Freeze the global order so filters never reorder the legend
+  _globalCatOrder = [...r.categories];
+  _globalColorMap = { ...r.colorMap };
 
   // Toggle
   const toggle = _container.append("div").attr("class", "dualaxis-toggle");
@@ -450,6 +458,7 @@ function drawLegend() {
         _lockedCat = null;
         render(true);
         drawLegend();
+        _drawSmallMultiples(); // sync category hide/show to small multiples
       });
     item
       .append("span")
@@ -459,35 +468,40 @@ function drawLegend() {
   });
 }
 
-/* ── Small Multiples ── */
-export function renderSmallMultiples(sel, finesData) {
-  const smC = d3.select(sel);
+/* ── Small Multiples internal draw ── */
+function _drawSmallMultiples() {
+  if (!_smSelector || !_smFinesRaw) return;
+  const smC = d3.select(_smSelector);
   smC.html("");
+
+  // Filter raw data by current year range
+  let baseData = _smFinesRaw;
+  if (_smYearRange && _smYearRange[0] != null) {
+    baseData = baseData.filter(
+      (d) => d.YEAR != null && d.YEAR >= _smYearRange[0] && d.YEAR <= _smYearRange[1],
+    );
+  }
+
   const jurisdictions = [
-    ...new Set(finesData.map((d) => d.JURISDICTION).filter(Boolean)),
+    ...new Set(_smFinesRaw.map((d) => d.JURISDICTION).filter(Boolean)),
   ].sort();
   if (!jurisdictions.length) return;
 
-  const overall = buildGrouped(finesData);
-  const cats = overall.categories,
-    cm = overall.colorMap,
-    gp = overall.periods;
+  // Use global periods (year axis) from filtered data
+  const allPeriods = [
+    ...new Set(baseData.map((d) => d.YEAR).filter((y) => y != null)),
+  ].sort((a, b) => a - b);
+
+  // Active categories: global order minus any the user has hidden
+  const globalCats = _globalCatOrder || _categories || [];
+  const top4 = globalCats.filter((c) => c !== "Other");
+  const activeCatsList = globalCats.filter(
+    (c) => !_hiddenCats || !_hiddenCats.has(c),
+  );
+  const cm = _globalColorMap || _colorMap || {};
+
   const smH = 110,
     smW = 220;
-
-  // Build data per jurisdiction; each chart is scaled to its own max.
-  const allSmData = [];
-  for (const j of jurisdictions) {
-    const jData = finesData.filter((d) => d.JURISDICTION === j);
-    const grouped = buildGrouped(jData);
-    const sd = gp.map((p) => {
-      const ex = grouped.stackData.find((r) => r.period === p);
-      const row = { period: p, _label: ex ? ex._label : String(p) };
-      cats.forEach((c) => (row[c] = ex ? ex[c] || 0 : 0));
-      return row;
-    });
-    allSmData.push({ j, sd });
-  }
 
   smC
     .append("div")
@@ -496,7 +510,35 @@ export function renderSmallMultiples(sel, finesData) {
       "Small multiples use independent y-scales so lower-volume jurisdictions remain readable.",
     );
 
-  for (const { j, sd } of allSmData) {
+  for (const j of jurisdictions) {
+    const jData = baseData.filter((d) => d.JURISDICTION === j);
+
+    // Aggregate fines per period per metric (raw rows)
+    const metricMap = new Map();
+    for (const row of jData) {
+      if (row.YEAR == null) continue;
+      const k = `${row.YEAR}|${row.METRIC || "unknown"}`;
+      metricMap.set(k, (metricMap.get(k) || 0) + (row.FINES || 0));
+    }
+
+    // Build stack data using global periods + active global category ordering
+    const sd = allPeriods.map((p) => {
+      const row = { period: p, _label: String(p) };
+      activeCatsList.forEach((c) => {
+        if (c === "Other") {
+          let otherSum = 0;
+          for (const [k, v] of metricMap.entries()) {
+            const [ps, metric] = k.split("|");
+            if (parseInt(ps, 10) === p && !top4.includes(metric)) otherSum += v;
+          }
+          row[c] = otherSum;
+        } else {
+          row[c] = metricMap.get(`${p}|${c}`) || 0;
+        }
+      });
+      return row;
+    });
+
     const card = smC
       .append("div")
       .attr("class", "small-chart")
@@ -518,6 +560,7 @@ export function renderSmallMultiples(sel, finesData) {
           }),
         );
       });
+
     card.append("div").attr("class", "small-chart-label").text(j.toUpperCase());
 
     const svg = card
@@ -538,16 +581,13 @@ export function renderSmallMultiples(sel, finesData) {
         `Small multiple stacked area chart for ${j.toUpperCase()} fine composition`,
       );
 
-    const x = d3
-      .scaleLinear()
-      .domain(d3.extent(gp))
-      .range([4, smW - 4]);
-    const series = d3.stack().keys(cats).order(d3.stackOrderDescending)(sd);
+    if (!sd.length || !activeCatsList.length) continue;
+
+    const x = d3.scaleLinear().domain(d3.extent(allPeriods)).range([4, smW - 4]);
+    // stackOrderNone = explicit global ordering, not re-sorted per jurisdiction
+    const series = d3.stack().keys(activeCatsList)(sd);
     const localYMax = d3.max(series, (ser) => d3.max(ser, (d) => d[1])) || 1;
-    const y = d3
-      .scaleLinear()
-      .domain([0, localYMax])
-      .range([smH - 4, 4]);
+    const y = d3.scaleLinear().domain([0, localYMax]).range([smH - 4, 4]);
 
     const area = d3
       .area()
@@ -555,18 +595,19 @@ export function renderSmallMultiples(sel, finesData) {
       .y0((d) => y(d[0]))
       .y1((d) => y(d[1]))
       .curve(d3.curveMonotoneX);
+
     series.forEach((s) => {
       svg
         .append("path")
         .datum(s)
-        .attr("fill", cm[s.key])
+        .attr("fill", cm[s.key] || "#9A9A9A")
         .attr("opacity", 0.8)
         .attr("stroke", "#fff")
         .attr("stroke-width", 0.3)
         .attr("d", area);
     });
 
-    // Hover
+    // Hover overlay
     svg
       .append("rect")
       .attr("width", smW)
@@ -576,8 +617,8 @@ export function renderSmallMultiples(sel, finesData) {
         const [mx] = d3.pointer(ev);
         const period = Math.round(x.invert(mx));
         const row = sd.find((r) => r.period === period);
-        if (!row) return;
-        const topCat = cats.reduce((a, b) =>
+        if (!row || !activeCatsList.length) return;
+        const topCat = activeCatsList.reduce((a, b) =>
           (row[a] || 0) >= (row[b] || 0) ? a : b,
         );
         tooltip.show(
@@ -587,14 +628,29 @@ export function renderSmallMultiples(sel, finesData) {
       })
       .on("mouseout", () => tooltip.hide());
   }
+}
 
-  // Local jurisdiction filter listener
+/* ── Small Multiples public API ── */
+export function renderSmallMultiples(sel, finesData) {
+  _smSelector = sel;
+  _smFinesRaw = finesData;
+  _smYearRange = null;
+  _drawSmallMultiples();
+
+  // Jurisdiction filter listener — updates the MAIN chart
   const handler = (e) => {
     const { jurisdiction } = e.detail;
     const filtered = finesData.filter((d) => d.JURISDICTION === jurisdiction);
     const r = buildGrouped(filtered);
-    _categories = r.categories;
-    _colorMap = r.colorMap;
+    // Keep global category order so the legend never reorders
+    const knownCats = new Set(r.categories);
+    _categories = (_globalCatOrder || r.categories).filter((c) =>
+      knownCats.has(c),
+    );
+    r.categories
+      .filter((c) => !_categories.includes(c))
+      .forEach((c) => _categories.push(c));
+    _colorMap = { ...(_globalColorMap || {}), ...r.colorMap };
     _periods = r.periods;
     _stackData = r.stackData;
     _hiddenCats.clear();
@@ -604,6 +660,30 @@ export function renderSmallMultiples(sel, finesData) {
   };
   document.removeEventListener("stacked-jurisdiction-filter", handler);
   document.addEventListener("stacked-jurisdiction-filter", handler);
+}
+
+/**
+ * Highlight cards matching any state in `states`; dim the rest.
+ * Pass [] to clear all selection styling.
+ */
+export function syncSmallMultipleSelection(states) {
+  if (!_smSelector) return;
+  const cards = document.querySelectorAll(`${_smSelector} .small-chart`);
+  const hasSelection = states && states.length > 0;
+  const activeSet = new Set((states || []).map((s) => s.toLowerCase()));
+  cards.forEach((card) => {
+    const label = card.querySelector(".small-chart-label");
+    const j = label ? label.textContent.toLowerCase() : "";
+    if (!hasSelection) {
+      card.classList.remove("selected", "dimmed");
+    } else if (activeSet.has(j)) {
+      card.classList.add("selected");
+      card.classList.remove("dimmed");
+    } else {
+      card.classList.add("dimmed");
+      card.classList.remove("selected");
+    }
+  });
 }
 
 export function updateStackedArea(finesData, yearRange, states) {
@@ -628,14 +708,23 @@ export function updateStackedArea(finesData, yearRange, states) {
       (d) => d.YEAR >= yearRange[0] && d.YEAR <= yearRange[1],
     );
   const r = buildGrouped(filtered);
-  _categories = r.categories;
-  _colorMap = r.colorMap;
+  // Preserve global category order for consistent legend
+  const knownCats = new Set(r.categories);
+  _categories = (_globalCatOrder || r.categories).filter((c) => knownCats.has(c));
+  r.categories
+    .filter((c) => !_categories.includes(c))
+    .forEach((c) => _categories.push(c));
+  _colorMap = { ...(_globalColorMap || {}), ...r.colorMap };
   _periods = r.periods;
   _stackData = r.stackData;
   _hiddenCats.clear();
   _lockedCat = null;
   render(true);
   drawLegend();
+
+  // Update small multiples to reflect new year range
+  _smYearRange = yearRange || null;
+  _drawSmallMultiples();
 }
 
 export function computeSection4Insight(finesData) {

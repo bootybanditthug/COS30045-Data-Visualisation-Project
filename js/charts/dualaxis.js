@@ -193,7 +193,7 @@ export function initDualAxis(selector, alcoholDrug, breathTests) {
     .attr("x", -height / 2)
     .attr("text-anchor", "middle")
     .style("font-size", "12px")
-    .style("fill", "#9A9A9A")
+    .style("fill", "#1B6CC4")
     .text("Breath tests conducted");
 
   chart
@@ -204,7 +204,7 @@ export function initDualAxis(selector, alcoholDrug, breathTests) {
     .attr("x", height / 2)
     .attr("text-anchor", "middle")
     .style("font-size", "12px")
-    .style("fill", "#9A9A9A")
+    .style("fill", "#E09420")
     .text("Positivity rate (%)");
 
   // Store dimensions
@@ -293,7 +293,7 @@ function renderChart(alcoholDrug, breathTests) {
     )
     .selectAll("text")
     .style("font-size", "12px")
-    .style("fill", "#9A9A9A");
+    .style("fill", "#1B6CC4");
 
   gYRight
     .transition()
@@ -335,6 +335,7 @@ function renderChart(alcoholDrug, breathTests) {
         .attr("fill", "#1B6CC4")
         .attr("opacity", 0.65)
         .attr("tabindex", 0)
+        .style("outline", "none")
         .on("mouseover", function (event, d) {
           d3.select(this).attr("opacity", 1);
           tooltip.show(
@@ -419,6 +420,7 @@ function renderChart(alcoholDrug, breathTests) {
         .attr("stroke", "#fff")
         .attr("stroke-width", 1.5)
         .attr("tabindex", 0)
+        .style("outline", "none")
         .on("mouseover", function (event, d) {
           d3.select(this).attr("r", 7);
           tooltip.show(
