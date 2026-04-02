@@ -130,7 +130,8 @@ export function initScatter(
   _width = cw - _margin.left - _margin.right;
   _height = 300;
 
-  _resetBtn = _container
+  const ctrlRow = _container.append("div").attr("class", "scatter-controls");
+  _resetBtn = ctrlRow
     .append("button")
     .attr("class", "reset-zoom-btn")
     .text("Reset zoom")
@@ -144,7 +145,6 @@ export function initScatter(
       _resetBtn.style("display", "none");
     });
 
-  const ctrlRow = _container.append("div").attr("class", "scatter-controls");
   _historyToggleBtn = ctrlRow
     .append("button")
     .attr("type", "button")
@@ -543,7 +543,7 @@ function zoomed(event) {
   draw();
   _resetBtn.style(
     "display",
-    t.k === 1 && t.x === 0 && t.y === 0 ? "none" : "inline-block",
+    t.k === 1 && t.x === 0 && t.y === 0 ? "none" : "inline-flex",
   );
 }
 

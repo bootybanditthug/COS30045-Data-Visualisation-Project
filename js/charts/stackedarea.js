@@ -8,11 +8,11 @@ const PALETTE = ["#1B6CC4", "#0F9E7B", "#E09420", "#E07055", "#9A9A9A"];
 
 // Fixed colors per known metric — prevents color-swapping when sort order changes by region
 const METRIC_COLOR = {
-  speed_fines:           "#1B6CC4",
+  speed_fines: "#1B6CC4",
   non_wearing_seatbelts: "#0F9E7B",
-  mobile_phone_use:      "#E09420",
-  unlicensed_driving:    "#E07055",
-  Other:                 "#9A9A9A",
+  mobile_phone_use: "#E09420",
+  unlicensed_driving: "#E07055",
+  Other: "#9A9A9A",
 };
 const MARGIN = { top: 30, right: 20, bottom: 44, left: 56 };
 
@@ -21,9 +21,9 @@ let _width, _height, _x, _y, _periods, _stackData, _mode, _hiddenCats;
 let _lockedCat = null,
   _periodLabels;
 let _lastFilterState = null;
-let _smSelector = null;   // small-multiples container selector
-let _smFinesRaw = null;   // full raw fines data for small multiples
-let _smYearRange = null;  // current year filter applied to small multiples
+let _smSelector = null; // small-multiples container selector
+let _smFinesRaw = null; // full raw fines data for small multiples
+let _smYearRange = null; // current year filter applied to small multiples
 let _globalCatOrder = null; // category order from full dataset — never reordered
 let _globalColorMap = null; // color map from full dataset
 const TRANSITION_MS = 400;
@@ -102,7 +102,8 @@ function buildGrouped(data) {
     } else {
       // Find an unused PALETTE slot for unknown metrics
       const used = new Set(Object.values(colorMap));
-      while (fallbackIdx < PALETTE.length && used.has(PALETTE[fallbackIdx])) fallbackIdx++;
+      while (fallbackIdx < PALETTE.length && used.has(PALETTE[fallbackIdx]))
+        fallbackIdx++;
       colorMap[c] = PALETTE[fallbackIdx] || PALETTE[4];
       fallbackIdx++;
     }
@@ -478,7 +479,10 @@ function _drawSmallMultiples() {
   let baseData = _smFinesRaw;
   if (_smYearRange && _smYearRange[0] != null) {
     baseData = baseData.filter(
-      (d) => d.YEAR != null && d.YEAR >= _smYearRange[0] && d.YEAR <= _smYearRange[1],
+      (d) =>
+        d.YEAR != null &&
+        d.YEAR >= _smYearRange[0] &&
+        d.YEAR <= _smYearRange[1],
     );
   }
 
@@ -502,13 +506,6 @@ function _drawSmallMultiples() {
 
   const smH = 110,
     smW = 220;
-
-  smC
-    .append("div")
-    .attr("class", "small-multiples-note")
-    .text(
-      "Small multiples use independent y-scales so lower-volume jurisdictions remain readable.",
-    );
 
   for (const j of jurisdictions) {
     const jData = baseData.filter((d) => d.JURISDICTION === j);
@@ -583,11 +580,17 @@ function _drawSmallMultiples() {
 
     if (!sd.length || !activeCatsList.length) continue;
 
-    const x = d3.scaleLinear().domain(d3.extent(allPeriods)).range([4, smW - 4]);
+    const x = d3
+      .scaleLinear()
+      .domain(d3.extent(allPeriods))
+      .range([4, smW - 4]);
     // stackOrderNone = explicit global ordering, not re-sorted per jurisdiction
     const series = d3.stack().keys(activeCatsList)(sd);
     const localYMax = d3.max(series, (ser) => d3.max(ser, (d) => d[1])) || 1;
-    const y = d3.scaleLinear().domain([0, localYMax]).range([smH - 4, 4]);
+    const y = d3
+      .scaleLinear()
+      .domain([0, localYMax])
+      .range([smH - 4, 4]);
 
     const area = d3
       .area()
@@ -710,7 +713,9 @@ export function updateStackedArea(finesData, yearRange, states) {
   const r = buildGrouped(filtered);
   // Preserve global category order for consistent legend
   const knownCats = new Set(r.categories);
-  _categories = (_globalCatOrder || r.categories).filter((c) => knownCats.has(c));
+  _categories = (_globalCatOrder || r.categories).filter((c) =>
+    knownCats.has(c),
+  );
   r.categories
     .filter((c) => !_categories.includes(c))
     .forEach((c) => _categories.push(c));

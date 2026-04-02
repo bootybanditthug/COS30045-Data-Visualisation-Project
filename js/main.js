@@ -12,11 +12,7 @@ import {
   updateDualAxis,
   computeInsight as computeDualAxisInsight,
 } from "./charts/dualaxis.js";
-import {
-  initSlopeChart,
-  updateSlopeChart,
-  computeSection3Insight,
-} from "./charts/slopechart.js";
+import { initSlopeChart, updateSlopeChart } from "./charts/slopechart.js";
 import { initScatter, updateScatter } from "./charts/scatter.js";
 import {
   initStackedArea,
@@ -278,8 +274,15 @@ function setKPI(n, label, value, trend) {
     } else if (trend && trend.text) {
       trendEl.textContent = trend.text;
       trendEl.className = "kpi-trend";
-      if (trend.cls === "negative") trendEl.classList.add("negative");
-      if (trend.cls === "neutral") trendEl.classList.add("neutral");
+      if (trend.cls === "positive" || trend.cls === "pos") {
+        trendEl.classList.add("positive");
+      }
+      if (trend.cls === "negative" || trend.cls === "neg") {
+        trendEl.classList.add("negative");
+      }
+      if (trend.cls === "neutral" || trend.cls === "neut") {
+        trendEl.classList.add("neutral");
+      }
     }
   }
 }
@@ -295,6 +298,75 @@ function calcTrend(current, previous, suffix) {
     text: `${arrow} ${sign}${d3.format(".1f")(pctChange)}% ${suffix}`,
     cls: pctChange >= 0 ? "positive" : "negative",
   };
+}
+
+function setStoryHTML(id, value, fallback = "") {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const next = value && value.trim() ? value : fallback;
+  el.innerHTML = next;
+}
+
+function populateStoryHighlights(data) {
+  const { alcoholDrug, breathTests, drugTests, fines } = data;
+  const years = [
+    ...new Set(alcoholDrug.map((d) => d.YEAR).filter((y) => y != null)),
+  ].sort((a, b) => a - b);
+  if (!years.length) return;
+
+  const minYear = years[0];
+  const maxYear = years[years.length - 1];
+  const totalBreath = d3.sum(alcoholDrug, (d) => d.breath_test_conducted || 0);
+  const totalDrug = d3.sum(alcoholDrug, (d) => d.drug_test_conducted || 0);
+  const totalTests = totalBreath + totalDrug;
+  const avgTests = years.length ? totalTests / years.length : 0;
+  const fmtCount = d3.format(",");
+
+  const evidence01 = totalTests
+    ? `Across ${years.length} years (${minYear}\u2013${maxYear}), agencies conducted <strong>${fmtCount(totalTests)}</strong> roadside tests (${fmtCount(totalBreath)} breath, ${fmtCount(totalDrug)} drug), averaging <strong>${fmtCount(Math.round(avgTests))}</strong> per year.`
+    : "";
+  setStoryHTML(
+    "story-01-evidence",
+    evidence01,
+    "Coverage data is limited for this period.",
+  );
+  setStoryHTML(
+    "story-01-implication",
+    "Use the year filter to compare any period against the long-run average and spot enforcement surges or pullbacks.",
+  );
+
+  const evidence02 = buildSection01Insight(alcoholDrug, [minYear, maxYear]);
+  setStoryHTML(
+    "story-02-evidence",
+    evidence02,
+    "Per-capita testing effort varies widely by jurisdiction.",
+  );
+  setStoryHTML(
+    "story-02-implication",
+    "Pair low testing with positivity in Section 02 to identify places that may be under-detecting risk.",
+  );
+
+  const evidence03 = computeDualAxisInsight(alcoholDrug, breathTests);
+  setStoryHTML(
+    "story-03-evidence",
+    evidence03,
+    "Testing volumes and positivity rates shift over time, revealing whether enforcement gains are sustained.",
+  );
+  setStoryHTML(
+    "story-03-implication",
+    "If positivity flattens while tests rise, enforcement may be hitting diminishing returns; filter by state to confirm.",
+  );
+
+  const evidence04 = computeSection4Insight(fines);
+  setStoryHTML(
+    "story-04-evidence",
+    evidence04,
+    "Some offence categories are expanding faster than others.",
+  );
+  setStoryHTML(
+    "story-04-implication",
+    "Switch between share and absolute views to see whether fast-growth categories are crowding out other offences.",
+  );
 }
 
 // ─── Filter Bar Builder ───
@@ -378,6 +450,7 @@ function buildFilterBar(sectionId, dataset) {
   sliderMin.min = minYear;
   sliderMin.max = maxYear;
   sliderMin.value = minYear;
+  sliderMin.style.zIndex = "3";
   sliderMin.setAttribute("aria-label", "Start year");
 
   const sliderMax = document.createElement("input");
@@ -385,6 +458,7 @@ function buildFilterBar(sectionId, dataset) {
   sliderMax.min = minYear;
   sliderMax.max = maxYear;
   sliderMax.value = maxYear;
+  sliderMax.style.zIndex = "4";
   sliderMax.setAttribute("aria-label", "End year");
 
   sliderGroup.appendChild(sliderMin);
@@ -404,6 +478,14 @@ function buildFilterBar(sectionId, dataset) {
   let activeStates = []; // empty = All
   let startYear = minYear;
   let endYear = maxYear;
+
+  function updateSliderTrackFill() {
+    const span = Math.max(1, maxYear - minYear);
+    const startPct = ((startYear - minYear) / span) * 100;
+    const endPct = ((endYear - minYear) / span) * 100;
+    sliderGroup.style.setProperty("--start-pct", `${startPct}%`);
+    sliderGroup.style.setProperty("--end-pct", `${endPct}%`);
+  }
 
   function dispatchFilterChange(source = "section") {
     document.dispatchEvent(
@@ -447,6 +529,7 @@ function buildFilterBar(sectionId, dataset) {
       sliderMax.value = endYear;
     }
     updateYearLabel();
+    updateSliderTrackFill();
     syncPillUI();
     if (emit) {
       dispatchFilterChange(source);
@@ -499,6 +582,7 @@ function buildFilterBar(sectionId, dataset) {
       sliderMin.value = startYear;
     }
     updateYearLabel();
+    updateSliderTrackFill();
     dispatchFilterChange("section");
   });
 
@@ -509,6 +593,7 @@ function buildFilterBar(sectionId, dataset) {
       sliderMax.value = endYear;
     }
     updateYearLabel();
+    updateSliderTrackFill();
     dispatchFilterChange("section");
   });
 
@@ -519,6 +604,7 @@ function buildFilterBar(sectionId, dataset) {
     startYear = val;
     inputMin.value = startYear;
     sliderMin.value = startYear;
+    updateSliderTrackFill();
     dispatchFilterChange("section");
   });
 
@@ -529,8 +615,11 @@ function buildFilterBar(sectionId, dataset) {
     endYear = val;
     inputMax.value = endYear;
     sliderMax.value = endYear;
+    updateSliderTrackFill();
     dispatchFilterChange("section");
   });
+
+  updateSliderTrackFill();
 
   clearBtn.addEventListener("click", () => {
     applyState([], [minYear, maxYear], "section", true);
@@ -590,7 +679,14 @@ function buildSection01Insight(data, yearRange) {
   const lowest = perCapita[perCapita.length - 1];
   const ratio = (highest.pc / lowest.pc).toFixed(1);
 
-  return `<strong>${highest.j.toUpperCase()}</strong> conducted <strong>${ratio}&times;</strong> more breath tests per capita than <strong>${lowest.j.toUpperCase()}</strong> in ${latestYear}, the widest enforcement gap in the dataset.`;
+  return `
+    <p class="insight-eyebrow">Key Insight</p>
+    <p class="insight-headline">
+      ${highest.j.toUpperCase()} conducted ${ratio}&times; more breath tests per
+      capita than ${lowest.j.toUpperCase()} in ${latestYear}
+    </p>
+    <p class="insight-detail">The widest enforcement gap in the dataset.</p>
+  `;
 }
 
 // ─── Main init ───
@@ -613,6 +709,7 @@ async function init() {
 
     // Populate KPIs
     populateKPIs(data);
+    populateStoryHighlights(data);
 
     // Build filter bars for each section
     const filterControllers = {
@@ -626,23 +723,8 @@ async function init() {
     initChoropleth("#choropleth-container", data.geoJSON, data.alcoholDrug);
     initBarChart("#barchart-container", data.alcoholDrug);
 
-    // Section 1 insight
-    const insight01 = document.getElementById("section-01-insight");
-    if (insight01)
-      insight01.innerHTML = buildSection01Insight(data.alcoholDrug);
-
     // ── Init Section 2 chart ──
     initDualAxis("#dualaxis-container", data.alcoholDrug, data.breathTests);
-
-    // Section 2 insight
-    const insight02 = document.getElementById("section-02-insight");
-    if (insight02) {
-      const insightText = computeDualAxisInsight(
-        data.alcoholDrug,
-        data.breathTests,
-      );
-      insight02.innerHTML = insightText;
-    }
 
     // ── Init Section 3 charts ──
     initSlopeChart(
@@ -660,34 +742,21 @@ async function init() {
       section3Metric,
     );
 
-    // Section 3 insight
-    const insight03 = document.getElementById("section-03-insight");
-    if (insight03) {
-      insight03.innerHTML = computeSection3Insight(
-        data.alcoholDrug,
-        data.breathTests,
-        data.drugTests,
-        section3Metric,
-      );
-    }
-
     const section03Toggle = document.getElementById("section-03-metric-toggle");
     if (section03Toggle) {
       section03Toggle.innerHTML = `
-        <div class="dualaxis-toggle" role="group" aria-label="Section 3 metric">
-          <button class="toggle-btn active" data-metric="alcohol" aria-pressed="true" type="button">Alcohol</button>
-          <button class="toggle-btn" data-metric="drug" aria-pressed="false" type="button">Drug</button>
-        </div>
+        <button class="metric-btn active" data-metric="alcohol" aria-pressed="true" type="button">Alcohol</button>
+        <button class="metric-btn" data-metric="drug" aria-pressed="false" type="button">Drug</button>
       `;
 
       section03Toggle.addEventListener("click", (event) => {
-        const btn = event.target.closest(".toggle-btn");
+        const btn = event.target.closest(".metric-btn");
         if (!btn) return;
         const metric = btn.dataset.metric;
         if (!metric || metric === section3Metric) return;
         section3Metric = metric;
 
-        section03Toggle.querySelectorAll(".toggle-btn").forEach((b) => {
+        section03Toggle.querySelectorAll(".metric-btn").forEach((b) => {
           const active = b === btn;
           b.classList.toggle("active", active);
           b.setAttribute("aria-pressed", String(active));
@@ -705,9 +774,14 @@ async function init() {
     renderSmallMultiples("#small-multiples-container", data.fines);
 
     // Section 4 insight
-    const insight04 = document.getElementById("section-04-insight");
-    if (insight04) {
-      insight04.innerHTML = computeSection4Insight(data.fines);
+    const insight04Text = computeSection4Insight(data.fines);
+    const insight04El = document.getElementById("section-04-insight");
+    if (insight04El) {
+      insight04El.innerHTML = `
+        <p class="insight-eyebrow">Fine growth</p>
+        <p class="insight-headline">Fastest-growing category in selected range</p>
+        <p class="insight-detail">${insight04Text}</p>
+      `;
     }
 
     // ── Footer year range ──
@@ -730,8 +804,6 @@ async function init() {
       if (sectionId === "section-01") {
         updateChoropleth(data.alcoholDrug, yr, states);
         updateBarChart(data.alcoholDrug, yr, states);
-        if (insight01)
-          insight01.innerHTML = buildSection01Insight(data.alcoholDrug, yr);
       }
 
       if (sectionId === "section-02") {
@@ -755,19 +827,31 @@ async function init() {
           states,
           section3Metric,
         );
-        if (insight03) {
-          insight03.innerHTML = computeSection3Insight(
-            data.alcoholDrug,
-            data.breathTests,
-            data.drugTests,
-            section3Metric,
-          );
-        }
       }
 
       if (sectionId === "section-04") {
         updateStackedArea(data.fines, yr, states);
         syncSmallMultipleSelection(states || []);
+        let filteredFines = data.fines;
+        if (states?.length) {
+          filteredFines = filteredFines.filter((d) =>
+            states.includes(d.JURISDICTION),
+          );
+        }
+        if (yr) {
+          filteredFines = filteredFines.filter(
+            (d) => d.YEAR >= yr[0] && d.YEAR <= yr[1],
+          );
+        }
+        const updatedInsight04 = computeSection4Insight(filteredFines);
+        const insight04El = document.getElementById("section-04-insight");
+        if (insight04El) {
+          insight04El.innerHTML = `
+            <p class="insight-eyebrow">Fine growth</p>
+            <p class="insight-headline">Fastest-growing category in selected range</p>
+            <p class="insight-detail">${updatedInsight04}</p>
+          `;
+        }
       }
     }
 
