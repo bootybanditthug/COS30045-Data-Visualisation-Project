@@ -1153,6 +1153,20 @@ section {
   min-height: 340px;
 }
 
+.dualaxis-reading-prompt {
+  margin: 16px 24px 0;
+  border-left-color: var(--amber);
+  background: rgba(224, 148, 32, 0.07);
+}
+
+.dualaxis-reading-prompt .insight-eyebrow {
+  color: var(--amber-dark);
+}
+
+.dualaxis-reading-prompt .insight-detail {
+  color: var(--text-primary);
+}
+
 .chart-layout {
   display: flex;
   flex-direction: column;
@@ -1482,16 +1496,33 @@ section {
 .slope-legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 12px;
   color: var(--text-secondary);
 }
 
-.slope-legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.slope-legend-line {
+  width: 18px;
+  height: 0;
+  border-top: 3px solid;
   display: inline-block;
+  border-radius: 999px;
+}
+
+.slope-legend-line-down {
+  border-top-color: var(--green);
+  transform: rotate(24deg);
+}
+
+.slope-legend-line-up {
+  border-top-color: var(--red);
+  transform: rotate(-24deg);
+}
+
+.slope-legend-line-flat {
+  border-top-color: #b0aeab;
+  border-top-style: dashed;
+  transform: rotate(0deg);
 }
 
 /* ===================================================

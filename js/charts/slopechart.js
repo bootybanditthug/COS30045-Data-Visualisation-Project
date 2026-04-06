@@ -143,19 +143,19 @@ export function initSlopeChart(
     .append("span")
     .attr("class", "slope-legend-item")
     .html(
-      '<span class="slope-legend-swatch" style="background:#2E8B57"></span>Improving (rate down)',
+      '<span class="slope-legend-line slope-legend-line-down"></span>Improving (rate falling)',
     );
   legend
     .append("span")
     .attr("class", "slope-legend-item")
     .html(
-      '<span class="slope-legend-swatch" style="background:#E09420"></span>Deteriorating (rate up)',
+      '<span class="slope-legend-line slope-legend-line-up"></span>Worsening (rate rising)',
     );
   legend
     .append("span")
     .attr("class", "slope-legend-item")
     .html(
-      '<span class="slope-legend-swatch" style="background:#B0AEAB"></span>Stable',
+      '<span class="slope-legend-line slope-legend-line-flat"></span>Stable',
     );
 
   const cw = _container.node().clientWidth || 520;
@@ -336,7 +336,7 @@ function render(animate) {
     let color;
     if (Math.abs(ch) < STABLE_CHANGE_PP) color = "#B0AEAB";
     else if (ch < 0) color = "#2E8B57";
-    else color = "#E09420";
+    else color = "#C93B3B";
 
     const isImp =
       d.j === topImp.j && Math.abs(topImp.change) >= STABLE_CHANGE_PP;
